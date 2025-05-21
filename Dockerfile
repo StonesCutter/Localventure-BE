@@ -10,7 +10,7 @@ COPY package*.json ./
 
 # Install ALL dependencies (including devDependencies for build)
 # Ensure NODE_ENV is not 'production' here or use --include=dev
-RUN npm install --include=dev 
+RUN npm install --include=dev
 
 # Copy the rest of the application code
 COPY . .
@@ -22,9 +22,8 @@ RUN npx prisma generate
 RUN npm run build
 
 # Railway will inject the PORT environment variable. 
-# EXPOSE is good for documentation but your app must use process.env.PORT.
-# No need to EXPOSE if Railway handles it.
+# Our app must use process.env.PORT to bind correctly.
 
-# Command to run the application
-# This uses the "start" script from package.json: "NODE_ENV=production pm2-runtime start ecosystem.config.js"
+# Command to run the application - simply node (no PM2)
+# This uses the "start" script from package.json: "NODE_ENV=production node dist/index.js"
 CMD ["npm", "start"]

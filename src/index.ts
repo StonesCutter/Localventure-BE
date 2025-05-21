@@ -92,10 +92,8 @@ const startServer = async (): Promise<Server> => {
         await prisma.$connect();
         console.log('✅ Database connection established');
 
-        if (process.env.NODE_ENV === 'production' && process.send) {
-          process.send('ready');
-          console.log('✅ Signaled ready to process manager');
-        }
+        // Note: We're now using plain Node.js, no need for PM2 process.send signaling
+        console.log('✅ Server ready and accepting connections');
         resolve(httpServer);
       } catch (dbError) {
         console.error('❌ Database connection failed during startup:', dbError);
@@ -124,19 +122,19 @@ const startServer = async (): Promise<Server> => {
     console.log('✅ Application startup sequence completed successfully.');
   } catch (error) {
     console.error('💥 Application failed to start:', error);
-    process.exit(1); // Exit with error code, PM2 will handle restart
+    process.exit(1); // Exit with error code, Railway will handle container restart
   }
 })();
 
 // Handle unhandled promise rejections globally
 process.on('unhandledRejection', (reason, promise) => {
   console.error('🚨 Unhandled Rejection at:', promise, 'reason:', reason);
-  // Consider exiting on unhandled rejections for production robustness, letting PM2 restart
+  // Consider exiting on unhandled rejections for production robustness, letting Railway restart the container
   // For now, aligns with previous behavior of just logging.
   // if (process.env.NODE_ENV === 'production') { process.exit(1); }
 });
 
-// Custom signal handlers removed; PM2 will handle these.
+// We don't need custom signal handlers; Railway handles container lifecycle.
 
 export { app }; // Export app only; server instance is managed internally
 
