@@ -33,7 +33,7 @@ if (!process.env.JWT_SECRET) {
 }
 const app = (0, express_1.default)();
 exports.app = app;
-const port = process.env.PORT || 3000;
+const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 // Security middleware
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)());
@@ -53,6 +53,10 @@ passport_1.default.use(strategy_1.jwtStrategy);
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to Localventure API' });
 });
+// Health check endpoint
+app.get('/healthz', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 // Auth routes with rate limiting
 app.use('/auth', authLimiter, routes_1.authRoutes);
 // Article routes
@@ -65,15 +69,43 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: 'Something went wrong!' });
 });
 // Graceful shutdown
-const shutdown = () => __awaiter(void 0, void 0, void 0, function* () {
-    console.log('Shutting down server...');
-    yield prisma_1.prisma.$disconnect();
-    process.exit(0);
-});
+function shutdown() {
+    return __awaiter(this, void 0, void 0, function* () {
+        console.log('Shutting down server...');
+        try {
+            yield prisma_1.prisma.$disconnect();
+            console.log('Database connection closed');
+            server.close(() => {
+                console.log('Server closed');
+                process.exit(0);
+            });
+        }
+        catch (err) {
+            console.error('Error during shutdown:', err);
+            process.exit(1);
+        }
+    });
+}
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 // Start the server
-const server = app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+const server = app.listen(port, '0.0.0.0', () => {
+    const address = server.address();
+    const host = typeof address === 'string' ? address : `${address === null || address === void 0 ? void 0 : address.address}:${address === null || address === void 0 ? void 0 : address.port}`;
+    console.log(`Server is running on ${host}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    // Test database connection
+    prisma_1.prisma.$connect()
+        .then(() => console.log('✅ Database connection established'))
+        .catch((err) => {
+        console.error('❌ Database connection failed:', err);
+        process.exit(1);
+    });
 });
 exports.server = server;
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+    console.error('Unhandled Rejection:', err);
+    // Close server and exit process
+    server.close(() => process.exit(1));
+});

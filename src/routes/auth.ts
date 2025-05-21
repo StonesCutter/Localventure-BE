@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response, RequestHandler } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -9,9 +9,9 @@ const router = Router();
 const prisma = new PrismaClient();
 
 // Register a new user
-router.post('/register', async (req, res) => {
+router.post('/register', (async (req: Request, res: Response) => {
   try {
-    const { email, password, name, role = 'user' } = req.body;
+    const { email, password, username, role_id = 2 } = req.body;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -30,15 +30,16 @@ router.post('/register', async (req, res) => {
     const user = await prisma.user.create({
       data: {
         email,
-        name,
-        password: hashedPassword,
-        role,
+        username,
+        password_hash: hashedPassword,
+        role_id,
+        is_active: true
       },
       select: {
-        id: true,
+        user_id: true,
         email: true,
-        name: true,
-        role: true,
+        username: true,
+        role_id: true,
       },
     });
 
@@ -47,16 +48,21 @@ router.post('/register', async (req, res) => {
     console.error('Registration error:', error);
     res.status(500).json({ message: 'Error registering user' });
   }
-});
+}) as RequestHandler);
 
 // Login user
-router.post('/login', async (req, res) => {
+router.post('/login', (async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
     // Find user
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const user = await prisma.user.findFirst({
+      where: { 
+        OR: [
+          { email },
+          { username: email }
+        ]
+      }
     });
 
     if (!user) {
@@ -64,15 +70,15 @@ router.post('/login', async (req, res) => {
     }
 
     // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Create JWT payload
     const payload = {
-      sub: user.id,
-      role: user.role,
+      sub: user.user_id.toString(),
+      role_id: user.role_id,
     };
 
     // Sign token
@@ -81,27 +87,34 @@ router.post('/login', async (req, res) => {
     });
 
     // Return user info (excluding password) and token
-    const { password: _, ...userWithoutPassword } = user;
+    const { password_hash, ...userWithoutPassword } = user;
     res.json({
-      user: userWithoutPassword,
+      user: {
+        ...userWithoutPassword,
+        id: user.user_id // For backward compatibility
+      },
       token,
     });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Error logging in' });
   }
-});
+}) as RequestHandler);
 
 // Get current user profile
 router.get(
   '/profile',
   passport.authenticate('jwt', { session: false }),
-  (req, res) => {
+  ((req: Request, res: Response) => {
     // req.user is set by passport-jwt
     const user = req.user as Express.User;
-    const { password, ...userWithoutPassword } = user;
-    res.json(userWithoutPassword);
-  }
+    const { password_hash, ...userWithoutPassword } = user;
+    res.json({
+      ...userWithoutPassword,
+      id: user.user_id // For backward compatibility
+    });
+  }) as RequestHandler
 );
 
 export default router;
+export { router as authRoutes };

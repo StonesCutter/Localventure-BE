@@ -23,17 +23,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.authRoutes = void 0;
 const express_1 = require("express");
 const client_1 = require("@prisma/client");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const passport_1 = __importDefault(require("passport"));
 const router = (0, express_1.Router)();
+exports.authRoutes = router;
 const prisma = new client_1.PrismaClient();
 // Register a new user
-router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.post('/register', ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { email, password, name, role = 'user' } = req.body;
+        const { email, password, username, role_id = 2 } = req.body;
         // Check if user already exists
         const existingUser = yield prisma.user.findUnique({
             where: { email },
@@ -48,15 +50,16 @@ router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, functio
         const user = yield prisma.user.create({
             data: {
                 email,
-                name,
-                password: hashedPassword,
-                role,
+                username,
+                password_hash: hashedPassword,
+                role_id,
+                is_active: true
             },
             select: {
-                id: true,
+                user_id: true,
                 email: true,
-                name: true,
-                role: true,
+                username: true,
+                role_id: true,
             },
         });
         res.status(201).json(user);
@@ -65,36 +68,42 @@ router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, functio
         console.error('Registration error:', error);
         res.status(500).json({ message: 'Error registering user' });
     }
-}));
+})));
 // Login user
-router.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.post('/login', ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { email, password } = req.body;
         // Find user
-        const user = yield prisma.user.findUnique({
-            where: { email },
+        const user = yield prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email },
+                    { username: email }
+                ]
+            }
         });
         if (!user) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
         // Check password
-        const isMatch = yield bcryptjs_1.default.compare(password, user.password);
+        const isMatch = yield bcryptjs_1.default.compare(password, user.password_hash);
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
         // Create JWT payload
         const payload = {
-            sub: user.id,
-            role: user.role,
+            sub: user.user_id.toString(),
+            role_id: user.role_id,
         };
         // Sign token
         const token = jsonwebtoken_1.default.sign(payload, process.env.JWT_SECRET || 'your-secret-key', {
             expiresIn: '24h',
         });
         // Return user info (excluding password) and token
-        const { password: _ } = user, userWithoutPassword = __rest(user, ["password"]);
+        const { password_hash } = user, userWithoutPassword = __rest(user, ["password_hash"]);
         res.json({
-            user: userWithoutPassword,
+            user: Object.assign(Object.assign({}, userWithoutPassword), { id: user.user_id // For backward compatibility
+             }),
             token,
         });
     }
@@ -102,12 +111,13 @@ router.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         console.error('Login error:', error);
         res.status(500).json({ message: 'Error logging in' });
     }
-}));
+})));
 // Get current user profile
-router.get('/profile', passport_1.default.authenticate('jwt', { session: false }), (req, res) => {
+router.get('/profile', passport_1.default.authenticate('jwt', { session: false }), ((req, res) => {
     // req.user is set by passport-jwt
     const user = req.user;
-    const { password } = user, userWithoutPassword = __rest(user, ["password"]);
-    res.json(userWithoutPassword);
-});
+    const { password_hash } = user, userWithoutPassword = __rest(user, ["password_hash"]);
+    res.json(Object.assign(Object.assign({}, userWithoutPassword), { id: user.user_id // For backward compatibility
+     }));
+}));
 exports.default = router;

@@ -21,24 +21,42 @@ const jwtOptions = {
 exports.jwtStrategy = new passport_jwt_1.Strategy(jwtOptions, (req, payload, done) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const user = yield prisma.user.findUnique({
-            where: { id: payload.sub },
+            where: { user_id: parseInt(payload.sub) },
+            select: {
+                user_id: true,
+                email: true,
+                username: true,
+                role_id: true,
+                password_hash: true,
+                join_date: true,
+                is_active: true
+            }
         });
         if (user) {
-            return done(null, user);
+            // Map to Express.User interface
+            const userForAuth = {
+                user_id: user.user_id,
+                email: user.email,
+                username: user.username,
+                role_id: user.role_id,
+                password_hash: user.password_hash
+            };
+            return done(null, userForAuth);
         }
         return done(null, false);
     }
     catch (error) {
+        console.error('JWT Strategy Error:', error);
         return done(error, false);
     }
 }));
 // Role-based middleware
-const requireRole = (roles) => {
+const requireRole = (roleIds) => {
     return (req, res, next) => {
         if (!req.user) {
             return res.status(401).json({ message: 'Unauthorized' });
         }
-        if (!roles.includes(req.user.role)) {
+        if (!req.user || !roleIds.includes(req.user.role_id)) {
             return res.status(403).json({ message: 'Insufficient permissions' });
         }
         next();

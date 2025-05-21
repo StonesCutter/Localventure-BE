@@ -4,7 +4,9 @@ import { PrismaClient } from '@prisma/client';
 import passport from 'passport';
 
 const router = Router();
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  log: ['query', 'info', 'warn', 'error']
+});
 
 // Validation middleware for creating/updating articles
 const validateArticle = [
@@ -37,24 +39,21 @@ router.post(
   async (req: Request & { user?: Express.User }, res: Response) => {
     try {
       const { title, content, cityId } = req.body;
-      const article = await prisma.article.create({
+      const article = await prisma.spot.create({
         data: {
-          title,
-          content,
-          cityId,
-          authorId: req.user!.id,
+          name: title,
+          summary: content,
+          city_id: cityId,
+          category_id: 1, // Default category, adjust as needed
+          slug: title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, ''),
+          status: 'published',
+          city: {
+            connect: { city_id: cityId }
+          }
         },
         include: {
-          city: true,
-          author: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              role: true
-            }
-          }
-        }
+          city: true
+        },
       });
       res.status(201).json(article);
     } catch (error) {
@@ -64,27 +63,28 @@ router.post(
   }
 );
 
-// Get all articles
-router.get('/', async (_req: Request, res: Response) => {
-  try {
-    const articles = await prisma.article.findMany({
-      include: {
-        city: true,
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true
-          }
-        }
-      }
-    });
-    res.json(articles);
-  } catch (error) {
-    console.error('Error fetching articles:', error);
-    res.status(500).json({ message: 'Error fetching articles' });
+// Get all articles with optional city filter
+router.get(
+  '/',
+  async (req: Request, res: Response) => {
+    try {
+      const { cityId } = req.query;
+      const articles = await prisma.spot.findMany({
+        where: {
+          ...(cityId ? { city_id: Number(cityId) } : {}),
+          status: 'published'
+        },
+        include: {
+          city: true
+        },
+        orderBy: { spot_id: 'desc' },
+      });
+      res.json(articles);
+    } catch (error) {
+      console.error('Error fetching articles:', error);
+      res.status(500).json({ message: 'Error fetching articles' });
+    }
   }
-});
+);
 
 export { router as articleRoutes };

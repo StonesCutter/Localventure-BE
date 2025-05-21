@@ -19,7 +19,9 @@ const client_1 = require("@prisma/client");
 const passport_1 = __importDefault(require("passport"));
 const router = (0, express_1.Router)();
 exports.articleRoutes = router;
-const prisma = new client_1.PrismaClient();
+const prisma = new client_1.PrismaClient({
+    log: ['query', 'info', 'warn', 'error']
+});
 // Validation middleware for creating/updating articles
 const validateArticle = [
     (0, express_validator_1.body)('title')
@@ -46,24 +48,21 @@ const validateArticle = [
 router.post('/', passport_1.default.authenticate('jwt', { session: false }), validateArticle, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { title, content, cityId } = req.body;
-        const article = yield prisma.article.create({
+        const article = yield prisma.spot.create({
             data: {
-                title,
-                content,
-                cityId,
-                authorId: req.user.id,
+                name: title,
+                summary: content,
+                city_id: cityId,
+                category_id: 1, // Default category, adjust as needed
+                slug: title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, ''),
+                status: 'published',
+                city: {
+                    connect: { city_id: cityId }
+                }
             },
             include: {
-                city: true,
-                author: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                        role: true
-                    }
-                }
-            }
+                city: true
+            },
         });
         res.status(201).json(article);
     }
@@ -72,21 +71,16 @@ router.post('/', passport_1.default.authenticate('jwt', { session: false }), val
         res.status(500).json({ message: 'Error creating article' });
     }
 }));
-// Get all articles
-router.get('/', (_req, res) => __awaiter(void 0, void 0, void 0, function* () {
+// Get all articles with optional city filter
+router.get('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const articles = yield prisma.article.findMany({
+        const { cityId } = req.query;
+        const articles = yield prisma.spot.findMany({
+            where: Object.assign(Object.assign({}, (cityId ? { city_id: Number(cityId) } : {})), { status: 'published' }),
             include: {
-                city: true,
-                author: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                        role: true
-                    }
-                }
-            }
+                city: true
+            },
+            orderBy: { spot_id: 'desc' },
         });
         res.json(articles);
     }

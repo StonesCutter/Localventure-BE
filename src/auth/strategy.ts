@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 type JwtPayload = {
   sub: string;
-  role: string;
+  role_id: number;
   iat?: number;
   exp?: number;
 };
@@ -14,11 +14,11 @@ type JwtPayload = {
 declare global {
   namespace Express {
     interface User {
-      id: string;
+      user_id: number;
       email: string;
-      name: string | null;
-      role: string;
-      password: string;
+      username: string;
+      role_id: number;
+      password_hash: string;
     }
   }
 }
@@ -31,30 +31,48 @@ const jwtOptions: StrategyOptions = {
 
 export const jwtStrategy = new JwtStrategy(
   jwtOptions,
-  async (req: Request, payload: JwtPayload, done: (error: any, user?: any) => void) => {
+  async (req: Request, payload: JwtPayload, done: (error: any, user?: Express.User | false) => void) => {
     try {
       const user = await prisma.user.findUnique({
-        where: { id: payload.sub },
+        where: { user_id: parseInt(payload.sub) },
+        select: {
+          user_id: true,
+          email: true,
+          username: true,
+          role_id: true,
+          password_hash: true,
+          join_date: true,
+          is_active: true
+        }
       });
       
       if (user) {
-        return done(null, user);
+        // Map to Express.User interface
+        const userForAuth: Express.User = {
+          user_id: user.user_id,
+          email: user.email,
+          username: user.username,
+          role_id: user.role_id,
+          password_hash: user.password_hash
+        };
+        return done(null, userForAuth);
       }
       return done(null, false);
     } catch (error) {
+      console.error('JWT Strategy Error:', error);
       return done(error, false);
     }
   }
 );
 
 // Role-based middleware
-export const requireRole = (roles: string[]) => {
+export const requireRole = (roleIds: number[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    if (!roles.includes(req.user.role)) {
+    if (!req.user || !roleIds.includes(req.user.role_id)) {
       return res.status(403).json({ message: 'Insufficient permissions' });
     }
 
