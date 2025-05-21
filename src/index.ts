@@ -19,8 +19,13 @@ if (!process.env.JWT_SECRET) {
   process.exit(1);
 }
 
+if (!process.env.DATABASE_URL) {
+  console.error('FATAL ERROR: DATABASE_URL is not defined');
+  process.exit(1);
+}
+
 const app = express();
-const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const port = Number(process.env.PORT) || 3000;
 
 // Security middleware
 app.use(helmet());
@@ -47,8 +52,8 @@ app.get('/', (req, res) => {
 });
 
 // Health check endpoint
-app.get('/healthz', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/healthz', (_, res) => {
+  res.send('ok');
 });
 
 // Auth routes with rate limiting
