@@ -128,6 +128,11 @@ const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
                 // Test database connection
                 yield prisma_1.prisma.$connect();
                 console.log('✅ Database connection established');
+                // Signal to PM2 that the app is ready (only in production)
+                if (process.env.NODE_ENV === 'production' && process.send) {
+                    process.send('ready');
+                    console.log('✅ Signaled ready to process manager');
+                }
             }
             catch (err) {
                 console.error('❌ Database connection failed:', err);

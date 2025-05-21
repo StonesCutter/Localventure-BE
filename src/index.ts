@@ -133,6 +133,12 @@ const startServer = async () => {
         // Test database connection
         await prisma.$connect();
         console.log('✅ Database connection established');
+        
+        // Signal to PM2 that the app is ready (only in production)
+        if (process.env.NODE_ENV === 'production' && process.send) {
+          process.send('ready');
+          console.log('✅ Signaled ready to process manager');
+        }
       } catch (err) {
         console.error('❌ Database connection failed:', err);
         // Don't exit immediately, let the server keep running
