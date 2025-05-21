@@ -2,10 +2,13 @@
 nixPkgs = ["nodejs_18"]
 
 [phases.install]
-cmds = ["npm install --only=production"]
+cmds = ["npm install"]
+
+[phases.build]
+cmds = ["npx prisma generate", "npm run build", "npm prune --production"]
 
 [start]
-cmd = "node server-test.js"
+cmd = "node dist/index.js"
 
 [variables]
 PORT = "3000"
