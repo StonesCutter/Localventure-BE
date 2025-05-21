@@ -1,0 +1,12 @@
+[phases.setup]
+nixPkgs = ["nodejs_18"]
+
+[phases.install]
+cmds = ["npm install --only=production"]
+
+[start]
+cmd = "node server-test.js"
+
+[variables]
+PORT = "3000"
+NODE_ENV = "production"
