@@ -73,44 +73,97 @@ app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({ message: 'Something went wrong!' });
 });
+// Keep track of whether we're already shutting down
+let isShuttingDown = false;
 // Graceful shutdown
 function shutdown() {
     return __awaiter(this, void 0, void 0, function* () {
-        console.log('Shutting down server...');
+        // Prevent multiple shutdown attempts
+        if (isShuttingDown)
+            return;
+        isShuttingDown = true;
+        console.log('Shutting down server gracefully...');
         try {
-            yield prisma_1.prisma.$disconnect();
-            console.log('Database connection closed');
-            server.close(() => {
-                console.log('Server closed');
+            // Close database connection if it exists
+            if (prisma_1.prisma) {
+                console.log('Closing database connection...');
+                yield prisma_1.prisma.$disconnect();
+                console.log('✅ Database connection closed');
+            }
+            // Close the server
+            const currentServer = yield server;
+            if (currentServer) {
+                currentServer.close(() => {
+                    console.log('✅ Server closed');
+                    process.exit(0);
+                });
+                // Force close after 5 seconds
+                setTimeout(() => {
+                    console.error('❌ Could not close connections in time, forcefully shutting down');
+                    process.exit(1);
+                }, 5000);
+            }
+            else {
+                console.log('No active server to close');
                 process.exit(0);
-            });
+            }
         }
         catch (err) {
-            console.error('Error during shutdown:', err);
+            console.error('❌ Error during shutdown:', err);
             process.exit(1);
         }
     });
 }
+// Handle different shutdown signals
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
-// Start the server
-const server = app.listen(PORT, '0.0.0.0', () => {
-    const address = server.address();
-    const host = typeof address === 'string' ? address : `${address === null || address === void 0 ? void 0 : address.address}:${address === null || address === void 0 ? void 0 : address.port}`;
-    console.log(`Server is running on ${host}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    // Test database connection
-    prisma_1.prisma.$connect()
-        .then(() => console.log('✅ Database connection established'))
-        .catch((err) => {
-        console.error('❌ Database connection failed:', err);
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+    console.error('❌ Uncaught Exception:', err);
+    shutdown();
+});
+// Create and start the server
+const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // Create server
+        const server = app.listen(PORT, '0.0.0.0', () => __awaiter(void 0, void 0, void 0, function* () {
+            const address = server.address();
+            const host = typeof address === 'string' ? address : `${address === null || address === void 0 ? void 0 : address.address}:${address === null || address === void 0 ? void 0 : address.port}`;
+            console.log(`🚀 Server is running on ${host}`);
+            console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+            try {
+                // Test database connection
+                yield prisma_1.prisma.$connect();
+                console.log('✅ Database connection established');
+            }
+            catch (err) {
+                console.error('❌ Database connection failed:', err);
+                // Don't exit immediately, let the server keep running
+                // The next database operation will trigger a retry
+            }
+        }));
+        // Handle server errors
+        server.on('error', (error) => {
+            if (error.name === 'EADDRINUSE') {
+                console.error(`❌ Port ${PORT} is already in use`);
+            }
+            else {
+                console.error('❌ Server error:', error);
+            }
+            process.exit(1);
+        });
+        // Handle unhandled promise rejections
+        process.on('unhandledRejection', (reason, promise) => {
+            console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+            // Don't exit on unhandled rejections, just log them
+        });
+        return server;
+    }
+    catch (error) {
+        console.error('❌ Failed to start server:', error);
         process.exit(1);
-    });
+    }
 });
+// Start the server
+const server = startServer();
 exports.server = server;
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-    console.error('Unhandled Rejection:', err);
-    // Close server and exit process
-    server.close(() => process.exit(1));
-});
