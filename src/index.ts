@@ -72,47 +72,7 @@ app.use((err: any, req: any, res: any, next: any) => {
   res.status(500).json({ message: 'Something went wrong!' });
 });
 
-// Keep track of whether we're already shutting down
-let isShuttingDown = false;
-
-// Graceful shutdown
-async function shutdown() {
-  // Prevent multiple shutdown attempts
-  if (isShuttingDown) return;
-  isShuttingDown = true;
-  
-  console.log('Shutting down server gracefully...');
-  
-  try {
-    // Close database connection if it exists
-    if (prisma) {
-      console.log('Closing database connection...');
-      await prisma.$disconnect();
-      console.log('✅ Database connection closed');
-    }
-    
-    // Close the server
-    const currentServer = await server;
-    if (currentServer) {
-      currentServer.close(() => {
-        console.log('✅ Server closed');
-        process.exit(0);
-      });
-      
-      // Force close after 5 seconds
-      setTimeout(() => {
-        console.error('❌ Could not close connections in time, forcefully shutting down');
-        process.exit(1);
-      }, 5000);
-    } else {
-      console.log('No active server to close');
-      process.exit(0);
-    }
-  } catch (err) {
-    console.error('❌ Error during shutdown:', err);
-    process.exit(1);
-  }
-}
+// Custom shutdown logic removed; PM2 will handle signals and shutdowns.
 
 // Moving signal handlers to the bottom of the file
 
@@ -120,88 +80,63 @@ async function shutdown() {
 import { Server } from 'http';
 
 // Create and start the server
-const startServer = async () => {
-  try {
-    // Create server
-    const server = app.listen(PORT, '0.0.0.0', async () => {
-      const address = server.address();
+const startServer = async (): Promise<Server> => {
+  return new Promise<Server>((resolve, reject) => {
+    const httpServer = app.listen(PORT, '0.0.0.0', async () => {
+      const address = httpServer.address();
       const host = typeof address === 'string' ? address : `${address?.address}:${address?.port}`;
       console.log(`🚀 Server is running on ${host}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-      
+
       try {
-        // Test database connection
         await prisma.$connect();
         console.log('✅ Database connection established');
-        
-        // Signal to PM2 that the app is ready (only in production)
+
         if (process.env.NODE_ENV === 'production' && process.send) {
           process.send('ready');
           console.log('✅ Signaled ready to process manager');
         }
-      } catch (err) {
-        console.error('❌ Database connection failed:', err);
-        // Don't exit immediately, let the server keep running
-        // The next database operation will trigger a retry
+        resolve(httpServer);
+      } catch (dbError) {
+        console.error('❌ Database connection failed during startup:', dbError);
+        httpServer.close(() => {
+          console.log('Server instance closed due to database connection failure during startup.');
+        });
+        reject(dbError); // Reject the main promise, signaling a startup failure
       }
     });
 
-    // Handle server errors
-    server.on('error', (error) => {
-      if (error.name === 'EADDRINUSE') {
+    httpServer.on('error', (error: Error & { code?: string }) => {
+      if (error.code === 'EADDRINUSE') {
         console.error(`❌ Port ${PORT} is already in use`);
       } else {
         console.error('❌ Server error:', error);
       }
-      process.exit(1);
+      reject(error); // Reject the main promise, signaling a startup failure
     });
-
-    // Handle unhandled promise rejections
-    process.on('unhandledRejection', (reason, promise) => {
-      console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-      // Don't exit on unhandled rejections, just log them
-    });
-
-    return server;
-  } catch (error) {
-    console.error('❌ Failed to start server:', error);
-    process.exit(1);
-  }
+  });
 };
 
-// Start the server
-const server = startServer();
+// Initialize and start the application
+(async () => {
+  try {
+    await startServer();
+    console.log('✅ Application startup sequence completed successfully.');
+  } catch (error) {
+    console.error('💥 Application failed to start:', error);
+    process.exit(1); // Exit with error code, PM2 will handle restart
+  }
+})();
 
-// Handle different shutdown signals after server is running
-process.on("SIGTERM", () => {
-  console.log("Shutting down server...");
-  setTimeout(() => {
-    // Wait for connections to drain before closing
-    server.then(s => {
-      if (s) s.close(() => console.log("Server closed"));
-    });
-  }, 500);
+// Handle unhandled promise rejections globally
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🚨 Unhandled Rejection at:', promise, 'reason:', reason);
+  // Consider exiting on unhandled rejections for production robustness, letting PM2 restart
+  // For now, aligns with previous behavior of just logging.
+  // if (process.env.NODE_ENV === 'production') { process.exit(1); }
 });
 
-process.on("SIGINT", () => {
-  console.log("Shutting down server...");
-  setTimeout(() => {
-    server.then(s => {
-      if (s) s.close(() => console.log("Server closed"));
-    });
-  }, 500);
-});
+// Custom signal handlers removed; PM2 will handle these.
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-  console.error('❌ Uncaught Exception:', err);
-  // Wait a bit before shutting down
-  setTimeout(() => {
-    server.then(s => {
-      if (s) s.close(() => console.log("Server closed"));
-      process.exit(1);
-    });
-  }, 500);
-});
+export { app }; // Export app only; server instance is managed internally
 
-export { app, server };
