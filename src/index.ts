@@ -35,6 +35,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// This route will be removed since we already have a root route handler below
+
 // Rate limiting for auth routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -47,8 +49,8 @@ app.use(passport.initialize());
 passport.use(jwtStrategy);
 
 // Routes
-app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to Localventure API' });
+app.get('/', (_, res) => {
+  res.status(200).send("OK");
 });
 
 // Health check endpoint
@@ -113,15 +115,7 @@ async function shutdown() {
   }
 }
 
-// Handle different shutdown signals
-process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown);
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-  console.error('❌ Uncaught Exception:', err);
-  shutdown();
-});
+// Moving signal handlers to the bottom of the file
 
 // Import Server type
 import { Server } from 'http';
@@ -172,5 +166,37 @@ const startServer = async () => {
 
 // Start the server
 const server = startServer();
+
+// Handle different shutdown signals after server is running
+process.on("SIGTERM", () => {
+  console.log("Shutting down server...");
+  setTimeout(() => {
+    // Wait for connections to drain before closing
+    server.then(s => {
+      if (s) s.close(() => console.log("Server closed"));
+    });
+  }, 500);
+});
+
+process.on("SIGINT", () => {
+  console.log("Shutting down server...");
+  setTimeout(() => {
+    server.then(s => {
+      if (s) s.close(() => console.log("Server closed"));
+    });
+  }, 500);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err);
+  // Wait a bit before shutting down
+  setTimeout(() => {
+    server.then(s => {
+      if (s) s.close(() => console.log("Server closed"));
+      process.exit(1);
+    });
+  }, 500);
+});
 
 export { app, server };

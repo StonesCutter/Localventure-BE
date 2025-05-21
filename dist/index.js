@@ -45,6 +45,7 @@ app.use((0, cors_1.default)());
 // Basic middleware
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
+// This route will be removed since we already have a root route handler below
 // Rate limiting for auth routes
 const authLimiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -55,8 +56,8 @@ const authLimiter = (0, express_rate_limit_1.default)({
 app.use(passport_1.default.initialize());
 passport_1.default.use(strategy_1.jwtStrategy);
 // Routes
-app.get('/', (req, res) => {
-    res.json({ message: 'Welcome to Localventure API' });
+app.get('/', (_, res) => {
+    res.status(200).send("OK");
 });
 // Health check endpoint
 app.get('/healthz', (_, res) => {
@@ -114,14 +115,6 @@ function shutdown() {
         }
     });
 }
-// Handle different shutdown signals
-process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown);
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-    console.error('❌ Uncaught Exception:', err);
-    shutdown();
-});
 // Create and start the server
 const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -167,3 +160,35 @@ const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
 // Start the server
 const server = startServer();
 exports.server = server;
+// Handle different shutdown signals after server is running
+process.on("SIGTERM", () => {
+    console.log("Shutting down server...");
+    setTimeout(() => {
+        // Wait for connections to drain before closing
+        server.then(s => {
+            if (s)
+                s.close(() => console.log("Server closed"));
+        });
+    }, 500);
+});
+process.on("SIGINT", () => {
+    console.log("Shutting down server...");
+    setTimeout(() => {
+        server.then(s => {
+            if (s)
+                s.close(() => console.log("Server closed"));
+        });
+    }, 500);
+});
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+    console.error('❌ Uncaught Exception:', err);
+    // Wait a bit before shutting down
+    setTimeout(() => {
+        server.then(s => {
+            if (s)
+                s.close(() => console.log("Server closed"));
+            process.exit(1);
+        });
+    }, 500);
+});
