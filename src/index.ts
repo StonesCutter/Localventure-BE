@@ -48,7 +48,8 @@ const authLimiter = rateLimit({
 app.use(passport.initialize());
 passport.use(jwtStrategy);
 
-// --- Health checks -------------------------------------------------
+// --- Health checks (defined early to ensure they're always available) ---
+// IMPORTANT: This must be registered before other middleware for Railway health checks
 app.get('/healthz', (_req: express.Request, res: express.Response) => {
   res.status(200).send('OK');
 });

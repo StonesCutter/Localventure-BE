@@ -21,9 +21,12 @@ RUN npx prisma generate
 # Build the application
 RUN npm run build
 
+# Set the environment variable directly in the container
+ENV NODE_ENV=production
+
 # Railway will inject the PORT environment variable. 
 # Our app must use process.env.PORT to bind correctly.
 
 # Command to run the application - simply node (no PM2)
-# This uses the "start" script from package.json: "NODE_ENV=production node dist/index.js"
+# This uses the "start" script from package.json
 CMD ["npm", "start"]
