@@ -32,8 +32,8 @@ RUN chmod +x /app/start.sh
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Expose port 3000 as shown in Railway config
+# Expose the port the app runs on
 EXPOSE 3000
 
-# Run the application
-CMD ["sh", "/app/start.sh"]
+# Run the application using the compiled JavaScript
+CMD ["node", "dist/index.js"]
