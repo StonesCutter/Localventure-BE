@@ -80,59 +80,54 @@ app.use((err: any, req: any, res: any, next: any) => {
 // Import Server type
 import { Server } from 'http';
 
-// Create and start the server
-const startServer = async (): Promise<Server> => {
-  return new Promise<Server>((resolve, reject) => {
-    const httpServer = app.listen(PORT, '0.0.0.0', async () => {
-      const address = httpServer.address();
-      const host = typeof address === 'string' ? address : `${address?.address}:${address?.port}`;
-      console.log(`🚀 Server is running on ${host}`);
+// Simplify server startup for Railway compatibility
+// Connect to database first
+(async () => {
+  try {
+    // Establish database connection
+    console.log('Connecting to database...');
+    await prisma.$connect();
+    console.log('✅ Database connection established');
+
+    // Start server only after database connection is established
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Server is running on port ${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-
-      try {
-        await prisma.$connect();
-        console.log('✅ Database connection established');
-
-        // Note: We're now using plain Node.js, no need for PM2 process.send signaling
-        console.log('✅ Server ready and accepting connections');
-        resolve(httpServer);
-      } catch (dbError) {
-        console.error('❌ Database connection failed during startup:', dbError);
-        httpServer.close(() => {
-          console.log('Server instance closed due to database connection failure during startup.');
-        });
-        reject(dbError); // Reject the main promise, signaling a startup failure
-      }
+      console.log('✅ Server ready and accepting connections');
     });
 
-    httpServer.on('error', (error: Error & { code?: string }) => {
+    // Handle server errors
+    server.on('error', (error: Error & { code?: string }) => {
       if (error.code === 'EADDRINUSE') {
         console.error(`❌ Port ${PORT} is already in use`);
       } else {
         console.error('❌ Server error:', error);
       }
-      reject(error); // Reject the main promise, signaling a startup failure
+      // Fatal error - exit and let Railway restart
+      process.exit(1);
     });
-  });
-};
 
-// Initialize and start the application
-(async () => {
-  try {
-    await startServer();
-    console.log('✅ Application startup sequence completed successfully.');
+    // Handle graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM received, shutting down gracefully');
+      server.close(async () => {
+        await prisma.$disconnect();
+        console.log('Server and database connections closed');
+        process.exit(0);
+      });
+    });
+
   } catch (error) {
-    console.error('💥 Application failed to start:', error);
-    process.exit(1); // Exit with error code, Railway will handle container restart
+    console.error('💥 Failed to start application:', error);
+    // Exit with error and let Railway restart
+    process.exit(1);
   }
 })();
 
 // Handle unhandled promise rejections globally
 process.on('unhandledRejection', (reason, promise) => {
   console.error('🚨 Unhandled Rejection at:', promise, 'reason:', reason);
-  // Consider exiting on unhandled rejections for production robustness, letting Railway restart the container
-  // For now, aligns with previous behavior of just logging.
-  // if (process.env.NODE_ENV === 'production') { process.exit(1); }
+  // Log only, don't exit
 });
 
 // We don't need custom signal handlers; Railway handles container lifecycle.
