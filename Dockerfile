@@ -24,8 +24,11 @@ RUN npm run build
 # Set the environment variable directly in the container
 ENV NODE_ENV=production
 
-# Railway will inject the PORT environment variable. 
-# Our app must use process.env.PORT to bind correctly.
+# Explicitly set PORT to 3000 as required by Railway
+ENV PORT=3000
+
+# Explicitly expose port 3000 as shown in Railway config
+EXPOSE 3000
 
 # Command to run the application - simply node (no PM2)
 # This uses the "start" script from package.json

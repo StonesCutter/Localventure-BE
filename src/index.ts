@@ -26,7 +26,8 @@ if (!process.env.DATABASE_URL) {
 }
 
 const app = express();
-const PORT = Number(process.env.PORT ?? 8080);
+// Railway expects port 3000 specifically based on configuration
+const PORT = Number(process.env.PORT ?? 3000);
 
 // Register health check routes FIRST - before any other middleware
 // This ensures health checks pass even if other middleware has errors
