@@ -13,6 +13,8 @@ COPY tsconfig.json ./
 COPY .env.example ./
 COPY src/ ./src/
 COPY prisma/ ./prisma/
+COPY server-test.js ./
+COPY start.sh ./
 
 # Generate Prisma client
 RUN npx prisma generate
@@ -23,6 +25,9 @@ RUN npm run build
 # Clean up dev dependencies
 RUN npm prune --production
 
+# Make the start script executable
+RUN chmod +x /app/start.sh
+
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -31,4 +36,4 @@ ENV PORT=3000
 EXPOSE 3000
 
 # Run the application
-CMD ["node", "dist/index.js"]
+CMD ["sh", "/app/start.sh"]
