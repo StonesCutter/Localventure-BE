@@ -80,47 +80,49 @@ app.use((err: any, req: any, res: any, next: any) => {
 // Import Server type
 import { Server } from 'http';
 
-// Simplify server startup for Railway compatibility
-// Connect to database first
+// Railway-optimized startup flow: start server first, then try database connection
 (async () => {
+  // Start the HTTP server immediately so health checks can succeed
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server is running on port ${PORT}`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log('✅ Server is responding to health checks');
+  });
+
+  // Handle server errors
+  server.on('error', (error: Error & { code?: string }) => {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`❌ Port ${PORT} is already in use`);
+    } else {
+      console.error('❌ Server error:', error);
+    }
+    process.exit(1); // Let Railway restart
+  });
+
+  // Handle graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    server.close(async () => {
+      try {
+        await prisma.$disconnect();
+        console.log('Database connections closed');
+      } catch (err) {
+        console.error('Error during shutdown:', err);
+      }
+      process.exit(0);
+    });
+  });
+
+  // Try to connect to the database AFTER server is already accepting requests
   try {
-    // Establish database connection
     console.log('Connecting to database...');
     await prisma.$connect();
     console.log('✅ Database connection established');
-
-    // Start server only after database connection is established
-    const server = app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Server is running on port ${PORT}`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log('✅ Server ready and accepting connections');
-    });
-
-    // Handle server errors
-    server.on('error', (error: Error & { code?: string }) => {
-      if (error.code === 'EADDRINUSE') {
-        console.error(`❌ Port ${PORT} is already in use`);
-      } else {
-        console.error('❌ Server error:', error);
-      }
-      // Fatal error - exit and let Railway restart
-      process.exit(1);
-    });
-
-    // Handle graceful shutdown
-    process.on('SIGTERM', () => {
-      console.log('SIGTERM received, shutting down gracefully');
-      server.close(async () => {
-        await prisma.$disconnect();
-        console.log('Server and database connections closed');
-        process.exit(0);
-      });
-    });
-
   } catch (error) {
-    console.error('💥 Failed to start application:', error);
-    // Exit with error and let Railway restart
-    process.exit(1);
+    // Log the database error but keep the server running
+    console.error('❌ Database connection failed:', error);
+    console.log('Server will continue running, but database-dependent routes will fail');
+    // We deliberately don't exit here - let Railway health checks pass
   }
 })();
 
