@@ -28,7 +28,7 @@ exports.jwtStrategy = new passport_jwt_1.Strategy(jwtOptions, (req, payload, don
                 username: true,
                 role_id: true,
                 password_hash: true,
-                join_date: true,
+                created_at: true,
                 is_active: true
             }
         });

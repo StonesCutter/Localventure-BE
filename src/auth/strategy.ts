@@ -41,7 +41,7 @@ export const jwtStrategy = new JwtStrategy(
           username: true,
           role_id: true,
           password_hash: true,
-          join_date: true,
+          created_at: true,
           is_active: true
         }
       });
