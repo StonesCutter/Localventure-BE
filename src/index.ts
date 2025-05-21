@@ -48,15 +48,14 @@ const authLimiter = rateLimit({
 app.use(passport.initialize());
 passport.use(jwtStrategy);
 
-// Routes
-app.get('/', (_, res) => {
-  res.status(200).send("OK");
+// --- Health checks -------------------------------------------------
+app.get('/healthz', (_req: express.Request, res: express.Response) => {
+  res.status(200).send('OK');
 });
-
-// Health check endpoint
-app.get('/healthz', (_, res) => {
-  res.send('ok');
-});
+app.get('/', (_req: express.Request, res: express.Response) => {
+  res.status(200).send('OK');
+}); // optional root check
+// ------------------------------------------------------------------
 
 // Auth routes with rate limiting
 app.use('/auth', authLimiter, authRoutes);
