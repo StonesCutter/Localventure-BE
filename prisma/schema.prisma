@@ -16,7 +16,7 @@ model User {
   email         String   @unique
   password_hash String   @map("password_hash")
   role_id       Int      @map("role_id")
-  join_date     DateTime @default(now()) @map("join_date") @db.Timestamptz()
+  created_at    DateTime @default(now()) @map("created_at") @db.Timestamptz()
   is_active     Boolean  @default(true) @map("is_active")
 
   @@map("user")
