@@ -11,6 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.server = exports.app = void 0;
 const express_1 = __importDefault(require("express"));
@@ -31,9 +32,13 @@ if (!process.env.JWT_SECRET) {
     console.error('FATAL ERROR: JWT_SECRET is not defined');
     process.exit(1);
 }
+if (!process.env.DATABASE_URL) {
+    console.error('FATAL ERROR: DATABASE_URL is not defined');
+    process.exit(1);
+}
 const app = (0, express_1.default)();
 exports.app = app;
-const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const PORT = Number((_a = process.env.PORT) !== null && _a !== void 0 ? _a : 8080);
 // Security middleware
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)());
@@ -54,8 +59,8 @@ app.get('/', (req, res) => {
     res.json({ message: 'Welcome to Localventure API' });
 });
 // Health check endpoint
-app.get('/healthz', (req, res) => {
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/healthz', (_, res) => {
+    res.send('ok');
 });
 // Auth routes with rate limiting
 app.use('/auth', authLimiter, routes_1.authRoutes);
@@ -89,7 +94,7 @@ function shutdown() {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 // Start the server
-const server = app.listen(port, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
     const address = server.address();
     const host = typeof address === 'string' ? address : `${address === null || address === void 0 ? void 0 : address.address}:${address === null || address === void 0 ? void 0 : address.port}`;
     console.log(`Server is running on ${host}`);

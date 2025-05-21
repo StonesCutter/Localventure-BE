@@ -16,8 +16,15 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.prisma = void 0;
 const client_1 = require("@prisma/client");
+// Validate required environment variables
+if (!process.env.DATABASE_URL) {
+    console.error('FATAL ERROR: DATABASE_URL is not defined');
+    process.exit(1);
+}
 // Prevent multiple instances of Prisma Client in development
-exports.prisma = global.prisma || new client_1.PrismaClient();
+exports.prisma = global.prisma || new client_1.PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+});
 if (process.env.NODE_ENV !== 'production') {
     global.prisma = exports.prisma;
 }

@@ -25,7 +25,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 const app = express();
-const port = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT ?? 8080);
 
 // Security middleware
 app.use(helmet());
@@ -91,7 +91,7 @@ process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
 // Start the server
-const server = app.listen(port, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   const address = server.address();
   const host = typeof address === 'string' ? address : `${address?.address}:${address?.port}`;
   console.log(`Server is running on ${host}`);
