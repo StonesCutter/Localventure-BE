@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction, RequestHandler } from 'express
 import { body, validationResult, ValidationChain } from 'express-validator';
 import { PrismaClient } from '@prisma/client';
 import passport from 'passport';
+import { safeQuery } from '../utils/safeQuery';
 
 console.log(`[${new Date().toISOString()}] [articles.ts] Initializing articles routes module...`);
 
@@ -119,17 +120,29 @@ router.get(
       const filterCondition = cityId ? `with cityId: ${cityId}` : 'without city filter';
       console.log(`[${new Date().toISOString()}] [articles.ts] ${req.method} ${req.originalUrl} - Fetching articles ${filterCondition}`);
       
-      console.log(`[${new Date().toISOString()}] [articles.ts] ${req.method} ${req.originalUrl} - Executing prisma.spot.findMany()`);
-      const articles = await prisma.spot.findMany({
-        where: {
-          ...(cityId ? { city_id: Number(cityId) } : {}),
-          status: 'published'
-        },
-        include: {
-          city: true
-        },
-        orderBy: { spot_id: 'desc' },
-      });
+      console.log(`[${new Date().toISOString()}] [articles.ts] ${req.method} ${req.originalUrl} - Executing query with retry logic`);
+      
+      // Use safeQuery with retry logic for listing articles (critical user-facing operation)
+      let articles: any[] = [];
+      if (cityId) {
+        const query = `
+          SELECT s.*, c.* 
+          FROM "Spot" s
+          LEFT JOIN "City" c ON s.city_id = c.city_id
+          WHERE s.city_id = $1 AND s.status = 'published'
+          ORDER BY s.spot_id DESC
+        `;
+        articles = await safeQuery<any[]>(query, [Number(cityId)]) || [];
+      } else {
+        const query = `
+          SELECT s.*, c.* 
+          FROM "Spot" s
+          LEFT JOIN "City" c ON s.city_id = c.city_id
+          WHERE s.status = 'published'
+          ORDER BY s.spot_id DESC
+        `;
+        articles = await safeQuery<any[]>(query) || [];
+      }
       console.log(`[${new Date().toISOString()}] [articles.ts] ${req.method} ${req.originalUrl} - Successfully fetched ${articles.length} articles`);
       
       console.log(`[${new Date().toISOString()}] [articles.ts] ${req.method} ${req.originalUrl} - Sending 200 OK response with articles data`);

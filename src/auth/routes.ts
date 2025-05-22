@@ -3,6 +3,7 @@ import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
+import { safeQuery } from '../utils/safeQuery';
 
 console.log(`[${new Date().toISOString()}] [auth/routes.ts] Initializing auth routes module...`);
 
@@ -137,22 +138,22 @@ router.post('/login', (async (req: Request, res: Response) => {
     const { email, password } = req.body as LoginRequest;
     console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Login attempt for email/username: ${email}`);
 
-    // Find user by email or username
-    console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Finding user by email or username...`);
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email },
-          { username: email }
-        ]
+    // Find user by email - use safeQuery for login which is a critical path
+    console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Looking up user by email...`);
+    try {
+      // Using raw query with retry logic for critical login path
+      const users = await safeQuery<{user_id: number, email: string, username: string, password_hash: string, role_id: number, is_active: boolean}[]>(
+        'SELECT user_id, email, username, password_hash, role_id, is_active FROM "User" WHERE email = $1 LIMIT 1',
+        [email]
+      );
+      
+      const user = users && users.length > 0 ? users[0] : null;
+      
+      if (!user) {
+        console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Login failed: User not found`);
+        return res.status(401).json({ message: 'Invalid credentials' });
       }
-    });
-    
-    if (!user) {
-      console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Login failed: User not found`);
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-    console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - User found with ID: ${user.user_id}`);
+      console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - User found, ID: ${user.user_id}`);
 
     // Check password
     console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Verifying password...`);
@@ -201,6 +202,10 @@ router.post('/login', (async (req: Request, res: Response) => {
     console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Sending 500 error response`);
     res.status(500).json({ message: 'Error logging in' });
   }
+    } catch (queryError) {
+      console.error(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Database query ERROR: ${queryError}`);
+      res.status(500).json({ message: 'Error during login - database connection issue' });
+    }
 }) as RequestHandler);
 
 console.log(`[${new Date().toISOString()}] [auth/routes.ts] Configuring /profile GET endpoint with JWT authentication...`);

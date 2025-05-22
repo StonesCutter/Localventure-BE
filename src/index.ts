@@ -172,6 +172,7 @@ logger.info('[index] Starting Railway-optimized startup flow');
     server.close(async () => {
       logger.info('[index] HTTP server closed, disconnecting from database');
       try {
+        // Interval will be cleared by the handler added during DB connection
         await prisma.$disconnect();
         logger.info('[index] Database connections closed successfully');
       } catch (err) {
@@ -194,6 +195,23 @@ logger.info('[index] Starting Railway-optimized startup flow');
     logger.info('[prisma] Executing test query to verify connection');
     await prisma.$queryRaw`SELECT 1`;
     logger.info('[prisma] Connection OK');
+    
+    /*************  KEEP-ALIVE (Neon free tier)  *************/
+    const KEEPALIVE_MS = 4 * 60_000;          // 4 minutes
+    const keepAliveInterval = setInterval(async () => {
+      try {
+        await prisma.$queryRaw`SELECT 1`;
+        console.log('[keep-alive] SELECT 1 OK');
+      } catch (err) {
+        console.error('[keep-alive] failed', err);
+      }
+    }, KEEPALIVE_MS);
+    
+    // Make sure to clear the interval on SIGTERM
+    process.on('SIGTERM', () => {
+      logger.info('[keep-alive] Clearing interval on SIGTERM');
+      clearInterval(keepAliveInterval);
+    });
     
     // Initialize Cloudinary if environment variables are available
     if (process.env.CLOUDINARY_CLOUD_NAME && 
