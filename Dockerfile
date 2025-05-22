@@ -33,7 +33,7 @@ ENV NODE_ENV=production
 ENV PORT=3000
 
 # Expose the port the app runs on
-EXPOSE $PORT
+EXPOSE 3000
 
 # Run the application using the compiled JavaScript
 CMD ["node", "dist/index.js"]

@@ -60,8 +60,9 @@ const app = express();
 logger.info('[index] Express application instance created');
 
 // Set port using environment variable or default to 3000
-const port = Number(process.env.PORT || 3000);
-logger.info(`[index] PORT configured as: ${port}`);
+const PORT = Number(process.env.PORT) || 3000;
+console.log(`[index] PORT chosen → ${PORT} (env=${process.env.PORT || 'undefined'})`);
+logger.info(`[index] PORT configured as: ${PORT}`);
 
 // Add direct health check endpoint
 app.get('/healthz', (_req, res) => {
@@ -144,10 +145,10 @@ import { Server } from 'http';
 logger.info('[index] Starting Railway-optimized startup flow');
 // Railway-optimized startup flow: start server first, then try database connection
 (async () => {
-  logger.info(`[index] Starting HTTP server on port ${port}`);
+  logger.info(`[index] Starting HTTP server on port ${PORT}`);
   // Start the HTTP server immediately so health checks can succeed
-  const server = app.listen(port, () => {
-    logger.info(`[index] Listening on ${port}`);
+  const server = app.listen(PORT, () => {
+    logger.info(`[index] Listening on ${PORT}`);
     logger.info(`[index] Environment: ${process.env.NODE_ENV || 'development'}`);
     logger.info('[index] Server is responding to health checks');
   });
@@ -156,7 +157,7 @@ logger.info('[index] Starting Railway-optimized startup flow');
   // Handle server errors
   server.on('error', (error: Error & { code?: string }) => {
     if (error.code === 'EADDRINUSE') {
-      logger.error(`[index] Port ${port} is already in use`);
+      logger.error(`[index] Port ${PORT} is already in use`);
     } else {
       logger.error({ err: error }, '[index] Server error');
     }
