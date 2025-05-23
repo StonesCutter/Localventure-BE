@@ -147,8 +147,8 @@ logger.info('[index] Starting Railway-optimized startup flow');
 (async () => {
   logger.info(`[index] Starting HTTP server on port ${PORT}`);
   // Start the HTTP server immediately so health checks can succeed
-  const server = app.listen(PORT, () => {
-    logger.info(`[index] Listening on ${PORT}`);
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    logger.info(`[index] Listening on ${PORT} (bound to all interfaces 0.0.0.0)`);
     logger.info(`[index] Environment: ${process.env.NODE_ENV || 'development'}`);
     logger.info('[index] Server is responding to health checks');
   });
