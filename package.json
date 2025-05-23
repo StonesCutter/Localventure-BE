@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "build": "tsc",
+    "build": "tsc && node scripts/fix-logger.js",
     "start": "node dist/index.js",
     "test-server": "node server-test.js",
     "keepalive": "node scripts/keepalive.js"
@@ -45,10 +45,10 @@
     "passport-jwt": "^4.0.1",
     "pg": "^8.16.0",
     "pino": "^9.7.0",
+    "pino-pretty": "^13.0.0",
     "prisma": "^5.9.1"
   },
   "devDependencies": {
-    "pino-pretty": "^13.0.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.3"
   }
