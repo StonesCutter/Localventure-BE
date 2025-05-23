@@ -5,6 +5,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Install OpenSSL 1.1 for Prisma compatibility on Alpine
+RUN apk add --no-cache openssl1.1-compat
+
 # Install dependencies including dev dependencies for build
 RUN npm install
 
