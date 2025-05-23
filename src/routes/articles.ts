@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { body, validationResult, ValidationChain } from 'express-validator';
-import { PrismaClient } from '@prisma/client';
+import { query } from '../db';
 import passport from 'passport';
 import { safeQuery } from '../utils/safeQuery';
 
@@ -10,11 +10,7 @@ console.log(`[${new Date().toISOString()}] [articles.ts] Creating Express router
 const router = Router();
 console.log(`[${new Date().toISOString()}] [articles.ts] Express router instance created`);
 
-console.log(`[${new Date().toISOString()}] [articles.ts] Creating PrismaClient instance for articles routes...`);
-const prisma = new PrismaClient({
-  log: ['query', 'info', 'warn', 'error'] as any
-});
-console.log(`[${new Date().toISOString()}] [articles.ts] PrismaClient instance created`);
+console.log(`[${new Date().toISOString()}] [articles.ts] DB query helper initialized for articles routes...`);
 
 console.log(`[${new Date().toISOString()}] [articles.ts] Setting up validation middleware for articles...`);
 // Validation middleware for creating/updating articles
@@ -62,23 +58,24 @@ router.post(
       const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
       console.log(`[${new Date().toISOString()}] [articles.ts] ${req.method} ${req.originalUrl} - Generated slug: ${slug}`);
       
-      console.log(`[${new Date().toISOString()}] [articles.ts] ${req.method} ${req.originalUrl} - Executing prisma.spot.create()`);
-      const article = await prisma.spot.create({
-        data: {
-          name: title,
-          summary: content,
-          city_id: cityId,
-          category_id: 1, // Default category, adjust as needed
-          slug: slug,
-          status: 'published',
-          city: {
-            connect: { city_id: cityId }
-          }
-        },
-        include: {
-          city: true
-        },
-      });
+      console.log(`[${new Date().toISOString()}] [articles.ts] ${req.method} ${req.originalUrl} - Executing SQL insert query`);
+      const articles = await query<any>(`
+        INSERT INTO "Spot" (name, summary, city_id, category_id, slug, status)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+      `, [title, content, cityId, 1, slug, 'published']);
+      
+      const article = articles[0];
+      
+      // Get city information to match the previous include behavior
+      const cities = await query<any>(`
+        SELECT * FROM "City" WHERE city_id = $1
+      `, [cityId]);
+      
+      // Attach city to article like Prisma would do with include
+      if (cities.length > 0) {
+        article.city = cities[0];
+      }
       console.log(`[${new Date().toISOString()}] [articles.ts] ${req.method} ${req.originalUrl} - Article created successfully with ID: ${article.spot_id}`);
       
       console.log(`[${new Date().toISOString()}] [articles.ts] ${req.method} ${req.originalUrl} - Sending 201 Created response with article data`);

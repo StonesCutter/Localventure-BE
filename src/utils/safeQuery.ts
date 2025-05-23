@@ -1,4 +1,4 @@
-import { prisma } from '../prisma';
+import { pool } from '../db';
 
 export async function safeQuery<T = unknown>(
   query: string,
@@ -7,9 +7,8 @@ export async function safeQuery<T = unknown>(
 ) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      return await prisma.$queryRawUnsafe<T>(query, ...values);
+      const result = await pool.query(query, values);
+      return result.rows as T;
     } catch (err) {
       if (attempt === retries) throw err;
       console.warn(`[db] attempt ${attempt} failed, retrying…`);

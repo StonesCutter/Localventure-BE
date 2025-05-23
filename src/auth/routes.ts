@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction, RequestHandler } from 'express
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { query } from '../db';
 import { safeQuery } from '../utils/safeQuery';
 
 console.log(`[${new Date().toISOString()}] [auth/routes.ts] Initializing auth routes module...`);
@@ -20,9 +20,7 @@ declare global {
   }
 }
 
-console.log(`[${new Date().toISOString()}] [auth/routes.ts] Creating PrismaClient instance for auth routes...`);
-const prisma = new PrismaClient();
-console.log(`[${new Date().toISOString()}] [auth/routes.ts] PrismaClient instance created`);
+console.log(`[${new Date().toISOString()}] [auth/routes.ts] DB query helper initialized for auth routes...`);
 
 console.log(`[${new Date().toISOString()}] [auth/routes.ts] Creating Express router instance...`);
 const router = Router();
@@ -52,14 +50,8 @@ router.post('/register', (async (req: Request, res: Response) => {
 
     // Check if user already exists
     console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Checking if user already exists...`);
-    const existingUser = await prisma.user.findFirst({
-      where: { 
-        OR: [
-          { email },
-          { username }
-        ]
-      }
-    });
+    const existingUsers = await query('SELECT * FROM users WHERE email = $1 OR username = $2 LIMIT 1', [email, username]);
+    const existingUser = existingUsers[0];
     
     if (existingUser) {
       const duplicateField = existingUser.email === email ? 'email' : 'username';
@@ -70,6 +62,7 @@ router.post('/register', (async (req: Request, res: Response) => {
       });
     }
     console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - User does not exist, proceeding with registration`);
+    console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - User does not exist, proceeding with registration`);
 
     // Hash password
     console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Hashing password...`);
@@ -78,15 +71,11 @@ router.post('/register', (async (req: Request, res: Response) => {
 
     // Create user
     console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Creating new user in database...`);
-    const user = await prisma.user.create({
-      data: {
-        email,
-        username,
-        password_hash: hashedPassword,
-        role_id,
-        is_active: true
-      },
-    });
+    const users = await query<Express.User>(
+      'INSERT INTO users (email, username, password_hash, role_id, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [email, username, hashedPassword, role_id, true]
+    );
+    const user = users[0];
     console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - User created successfully with ID: ${user.user_id}`);
 
     // Generate JWT

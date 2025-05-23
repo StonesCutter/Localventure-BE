@@ -1,12 +1,12 @@
 import { Router, Request, Response, RequestHandler } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { query } from '../db';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import { requireRole } from '../auth/strategy';
 
 const router = Router();
-const prisma = new PrismaClient();
+// DB query helper is imported from '../db'
 
 // Register a new user
 router.post('/register', (async (req: Request, res: Response) => {
@@ -14,11 +14,9 @@ router.post('/register', (async (req: Request, res: Response) => {
     const { email, password, username, role_id = 2 } = req.body;
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (existingUser) {
+    const existingUsers = await query<any>('SELECT * FROM users WHERE email = $1 LIMIT 1', [email]);
+    
+    if (existingUsers.length > 0) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
@@ -27,21 +25,11 @@ router.post('/register', (async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Create user
-    const user = await prisma.user.create({
-      data: {
-        email,
-        username,
-        password_hash: hashedPassword,
-        role_id,
-        is_active: true
-      },
-      select: {
-        user_id: true,
-        email: true,
-        username: true,
-        role_id: true,
-      },
-    });
+    const users = await query<any>(
+      'INSERT INTO users (email, username, password_hash, role_id, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING user_id, email, username, role_id', 
+      [email, username, hashedPassword, role_id, true]
+    );
+    const user = users[0];
 
     res.status(201).json(user);
   } catch (error) {
@@ -56,14 +44,8 @@ router.post('/login', (async (req: Request, res: Response) => {
     const { email, password } = req.body;
 
     // Find user
-    const user = await prisma.user.findFirst({
-      where: { 
-        OR: [
-          { email },
-          { username: email }
-        ]
-      }
-    });
+    const users = await query<any>('SELECT * FROM users WHERE email = $1 OR username = $1 LIMIT 1', [email]);
+    const user = users[0];
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });

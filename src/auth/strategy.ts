@@ -1,12 +1,10 @@
 import { Strategy as JwtStrategy, ExtractJwt, StrategyOptions } from 'passport-jwt';
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { query } from '../db';
 
 console.log(`[${new Date().toISOString()}] [auth/strategy.ts] Initializing JWT authentication strategy...`);
 
-console.log(`[${new Date().toISOString()}] [auth/strategy.ts] Creating PrismaClient instance for JWT strategy...`);
-const prisma = new PrismaClient();
-console.log(`[${new Date().toISOString()}] [auth/strategy.ts] PrismaClient instance created`);
+console.log(`[${new Date().toISOString()}] [auth/strategy.ts] DB query helper initialized for JWT strategy...`);
 
 type JwtPayload = {
   sub: string;
@@ -45,18 +43,8 @@ export const jwtStrategy = new JwtStrategy(
     
     try {
       console.log(`[${new Date().toISOString()}] [auth/strategy.ts] Attempting to find user with ID: ${payload.sub}`);
-      const user = await prisma.user.findUnique({
-        where: { user_id: parseInt(payload.sub) },
-        select: {
-          user_id: true,
-          email: true,
-          username: true,
-          role_id: true,
-          password_hash: true,
-          created_at: true,
-          is_active: true
-        }
-      });
+      const users = await query<Express.User>('SELECT user_id, email, username, role_id, password_hash, created_at, is_active FROM users WHERE user_id = $1', [parseInt(payload.sub)]);
+      const user = users[0];
       
       if (user) {
         console.log(`[${new Date().toISOString()}] [auth/strategy.ts] User found: ID ${user.user_id}, username: ${user.username}, role: ${user.role_id}`);

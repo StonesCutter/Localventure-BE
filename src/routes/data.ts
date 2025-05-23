@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { prisma } from '../prisma';
+import { query } from '../db';
 
 console.log(`[${new Date().toISOString()}] [data.ts] Initializing data routes module...`);
 
@@ -9,8 +9,8 @@ const router = Router();
 router.get('/users', async (req, res) => {
   console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Fetching all users`);
   try {
-    console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Executing prisma.user.findMany()`);
-    const users = await prisma.user.findMany();
+    console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Executing SQL query for users`);
+    const users = await query('SELECT * FROM users');
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Successfully fetched ${users.length} users`);
     
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Sending 200 response with users data`);
@@ -36,8 +36,8 @@ router.get('/users', async (req, res) => {
 router.get('/cities', async (req, res) => {
   console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Fetching all cities`);
   try {
-    console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Executing prisma.city.findMany()`);
-    const cities = await prisma.city.findMany();
+    console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Executing SQL query for cities`);
+    const cities = await query('SELECT * FROM "City"');
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Successfully fetched ${cities.length} cities`);
     
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Sending 200 response with cities data`);
@@ -63,11 +63,25 @@ router.get('/cities', async (req, res) => {
 router.get('/spots', async (req, res) => {
   console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Fetching all spots with city info`);
   try {
-    console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Executing prisma.spot.findMany() with city include`);
-    const spots = await prisma.spot.findMany({
-      include: {
-        city: true // Include city information for each spot
-      }
+    console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Executing SQL query for spots with city join`);
+    const spots = await query(`
+      SELECT s.*, c.*
+      FROM "Spot" s
+      LEFT JOIN "City" c ON s.city_id = c.city_id
+    `);
+    
+    // Transform the result to mimic Prisma's include format
+    const formattedSpots = spots.map(spot => {
+      const { city_id, city_name, country, ...cityRest } = spot;
+      return {
+        ...spot,
+        city: {
+          city_id,
+          name: city_name,
+          country,
+          ...cityRest
+        }
+      };
     });
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Successfully fetched ${spots.length} spots`);
     

@@ -25,43 +25,28 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authRoutes = void 0;
 const express_1 = require("express");
-const client_1 = require("@prisma/client");
+const db_1 = require("../db");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const passport_1 = __importDefault(require("passport"));
 const router = (0, express_1.Router)();
 exports.authRoutes = router;
-const prisma = new client_1.PrismaClient();
+// DB query helper is imported from '../db'
 // Register a new user
 router.post('/register', ((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { email, password, username, role_id = 2 } = req.body;
         // Check if user already exists
-        const existingUser = yield prisma.user.findUnique({
-            where: { email },
-        });
-        if (existingUser) {
+        const existingUsers = yield (0, db_1.query)('SELECT * FROM users WHERE email = $1 LIMIT 1', [email]);
+        if (existingUsers.length > 0) {
             return res.status(400).json({ message: 'User already exists' });
         }
         // Hash password
         const salt = yield bcryptjs_1.default.genSalt(10);
         const hashedPassword = yield bcryptjs_1.default.hash(password, salt);
         // Create user
-        const user = yield prisma.user.create({
-            data: {
-                email,
-                username,
-                password_hash: hashedPassword,
-                role_id,
-                is_active: true
-            },
-            select: {
-                user_id: true,
-                email: true,
-                username: true,
-                role_id: true,
-            },
-        });
+        const users = yield (0, db_1.query)('INSERT INTO users (email, username, password_hash, role_id, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING user_id, email, username, role_id', [email, username, hashedPassword, role_id, true]);
+        const user = users[0];
         res.status(201).json(user);
     }
     catch (error) {
@@ -74,14 +59,8 @@ router.post('/login', ((req, res) => __awaiter(void 0, void 0, void 0, function*
     try {
         const { email, password } = req.body;
         // Find user
-        const user = yield prisma.user.findFirst({
-            where: {
-                OR: [
-                    { email },
-                    { username: email }
-                ]
-            }
-        });
+        const users = yield (0, db_1.query)('SELECT * FROM users WHERE email = $1 OR username = $1 LIMIT 1', [email]);
+        const user = users[0];
         if (!user) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
@@ -121,3 +100,4 @@ router.get('/profile', passport_1.default.authenticate('jwt', { session: false }
      }));
 }));
 exports.default = router;
+//# sourceMappingURL=auth.js.map

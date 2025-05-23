@@ -11,7 +11,7 @@ import { authRoutes } from './auth/routes';
 import { articleRoutes } from './routes/articles';
 import { dataRoutes } from './routes/data';
 import { healthRoutes } from './routes/health';
-import { prisma } from './prisma';
+import { pool } from './db';
 
 logger.info('[index] Starting application');
 
@@ -173,7 +173,7 @@ logger.info('[index] Starting Railway-optimized startup flow');
       logger.info('[index] HTTP server closed, disconnecting from database');
       try {
         // Interval will be cleared by the handler added during DB connection
-        await prisma.$disconnect();
+        await pool.end();
         logger.info('[index] Database connections closed successfully');
       } catch (err) {
         logger.error({ err }, '[index] Error during database disconnect');
@@ -187,20 +187,16 @@ logger.info('[index] Starting Railway-optimized startup flow');
   logger.info('[index] Attempting database connection AFTER server startup');
   // Try to connect to the database AFTER server is already accepting requests
   try {
-    logger.info('[prisma] Init PrismaClient');
-    await prisma.$connect();
-    logger.info('[prisma] Connection established');
-    
-    // Perform a test query to verify connection works fully
-    logger.info('[prisma] Executing test query to verify connection');
-    await prisma.$queryRaw`SELECT 1`;
-    logger.info('[prisma] Connection OK');
+    logger.info('[db] Testing pg connection');
+    const res = await pool.query('SELECT 1');
+    logger.info('[db] Connection established');
+    logger.info('[db] Test query successful:', res.rows);
     
     /*************  KEEP-ALIVE (Neon free tier)  *************/
     const KEEPALIVE_MS = 4 * 60_000;          // 4 minutes
     const keepAliveInterval = setInterval(async () => {
       try {
-        await prisma.$queryRaw`SELECT 1`;
+        await pool.query('SELECT 1');
         console.log('[keep-alive] SELECT 1 OK');
       } catch (err) {
         console.error('[keep-alive] failed', err);
@@ -228,7 +224,7 @@ logger.info('[index] Starting Railway-optimized startup flow');
     }
   } catch (err) {
     // Log the database error and exit (as requested in the requirements)
-    logger.error({ err }, '[prisma] Connection FAILED');
+    logger.error({ err }, '[db] Connection FAILED');
     process.exit(1);
   }
 })();
