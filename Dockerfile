@@ -1,12 +1,29 @@
 FROM node:18-alpine
 
+# --- ALTERNATIVE FIXES for OpenSSL 1.1 (if Prisma upgrade is not feasible) ---
+#
+# A. Pin to old Alpine (includes OpenSSL 1.1)
+# FROM node:18-alpine3.18
+#
+# B. Switch to Debian slim and install libssl1.1
+# FROM node:18-bullseye-slim
+# RUN apt-get update && apt-get install -y --no-install-recommends libssl1.1 \
+#  && rm -rf /var/lib/apt/lists/*
+#
+# C. Temporary symlink hack (least desirable - use if other options fail)
+#    Requires `openssl` (OpenSSL 3.x) to be installed first.
+# RUN apk add --no-cache openssl \
+#  && ln -s /usr/lib/libssl.so.3     /usr/lib/libssl.so.1.1 \
+#  && ln -s /usr/lib/libcrypto.so.3 /usr/lib/libcrypto.so.1.1
+#
+# --- END ALTERNATIVE FIXES ---
+
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install OpenSSL 1.1 for Prisma compatibility on Alpine
-RUN apk add --no-cache openssl1.1-compat
+# No extra system packages required with Prisma >= 5.4
 
 # Install dependencies including dev dependencies for build
 RUN npm install
