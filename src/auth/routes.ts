@@ -132,7 +132,7 @@ router.post('/login', (async (req: Request, res: Response) => {
     try {
       // Using raw query with retry logic for critical login path
       const users = await safeQuery<{user_id: number, email: string, username: string, password_hash: string, role_id: number, is_active: boolean}[]>(
-        'SELECT user_id, email, username, password_hash, role_id, is_active FROM "User" WHERE email = $1 LIMIT 1',
+        'SELECT user_id, email, username, password_hash, role_id, is_active FROM user WHERE email = $1 LIMIT 1',
         [email]
       );
       

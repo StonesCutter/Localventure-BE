@@ -124,7 +124,7 @@ router.get(
       if (cityId) {
         const query = `
           SELECT s.*, c.* 
-          FROM "Spot" s
+          FROM spot s
           LEFT JOIN "city" c ON s.city_id = c.city_id
           WHERE s.city_id = $1 AND s.status = 'published'
           ORDER BY s.spot_id DESC
@@ -133,7 +133,7 @@ router.get(
       } else {
         const query = `
           SELECT s.*, c.* 
-          FROM "Spot" s
+          FROM spot s
           LEFT JOIN "city" c ON s.city_id = c.city_id
           WHERE s.status = 'published'
           ORDER BY s.spot_id DESC

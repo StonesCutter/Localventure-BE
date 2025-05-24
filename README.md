@@ -44,9 +44,35 @@ The application uses Neon PostgreSQL in production. For local development:
   - Required fields: email (or username), password
 
 ### Data API
-- `GET /api/users` - Get all users
+
+#### Cities
 - `GET /api/cities` - Get all cities
-- `GET /api/spots` - Get all spots
+  - Returns all cities with their details
+  - Example: https://localventure-be.onrender.com/api/cities
+  - Response includes: id, name, country, latitude, longitude, created_at, updated_at
+
+#### Spots (with city information)
+- `GET /api/spots` - Get all spots with city details
+  - Returns all spots with their associated city information
+  - Example: https://localventure-be.onrender.com/api/spots
+  - Response includes: spot details and nested city object
+
+#### Articles (with city filter)
+- `GET /api/articles` - Get all articles
+  - Returns all published articles
+  - Example: https://localventure-be.onrender.com/api/articles
+  - Response includes articles with city information
+
+- `GET /api/articles?cityId=123` - Get articles for a specific city
+  - Filter articles by city ID
+  - Example: https://localventure-be.onrender.com/api/articles?cityId=123
+  - Returns only articles published in the specified city
+
+#### Users
+- `GET /api/users` - Get all users
+  - Returns all user accounts
+  - Example: https://localventure-be.onrender.com/api/users
+  - Response includes user details (excluding sensitive information)
 
 ### Authentication Examples
 
@@ -59,27 +85,40 @@ $body = @{
     username = "username"
     role_id = 2  # Optional, defaults to 2
 } | ConvertTo-Json
-Invoke-RestMethod -Uri "https://<your-render-project>.onrender.com/auth/register" -Method Post -Body $body -ContentType "application/json"
+Invoke-RestMethod -Uri "https://localventure-be.onrender.com/auth/register" -Method Post -Body $body -ContentType "application/json"
 
 # Login
 $loginBody = @{
     email = "user@example.com"
     password = "password123"
 } | ConvertTo-Json
-$response = Invoke-RestMethod -Uri "https://<your-render-project>.onrender.com/auth/login" -Method Post -Body $loginBody -ContentType "application/json"
+$response = Invoke-RestMethod -Uri "https://localventure-be.onrender.com/auth/login" -Method Post -Body $loginBody -ContentType "application/json"
 $token = $response.token
+
+# Get all cities
+Invoke-RestMethod -Uri "https://localventure-be.onrender.com/api/cities" -Method Get
+
+# Get articles for a specific city
+$cityId = 123
+Invoke-RestMethod -Uri "https://localventure-be.onrender.com/api/articles?cityId=$cityId" -Method Get
 ```
 
 #### cURL
 ```bash
 # Register a new user
-curl -X POST https://<your-render-project>.onrender.com/auth/register \
+curl -X POST https://localventure-be.onrender.com/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com","password":"password123","username":"username","role_id":2}'
 
 # Login
-curl -X POST https://<your-render-project>.onrender.com/auth/login \
+curl -X POST https://localventure-be.onrender.com/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com","password":"password123"}'
+
+# Get all cities
+curl -X GET https://localventure-be.onrender.com/api/cities
+
+# Get articles for a specific city
+curl -X GET https://localventure-be.onrender.com/api/articles?cityId=123
 ```
 ```
