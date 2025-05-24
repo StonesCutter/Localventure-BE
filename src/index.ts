@@ -118,15 +118,22 @@ logger.info('[index] Registering auth routes with rate limiting');
 app.use('/auth', authLimiter, authRoutes);
 logger.info('[index] Auth routes registered');
 
-logger.info('[index] Registering article routes');
-// Article routes
-app.use('/articles', articleRoutes);
-logger.info('[index] Article routes registered');
+logger.info('[index] Deferring registration of routes that depend on DB tables until after initialization');
+let routesRegistered = false;
 
-logger.info('[index] Registering data routes (users, cities, spots)');
-// Data routes (users, cities, spots)
-app.use('/api', dataRoutes);
-logger.info('[index] Data routes registered');
+const registerAllRoutes = () => {
+  if (routesRegistered) return;
+  
+  // Article routes
+  app.use('/articles', articleRoutes);
+  logger.info('[index] Article routes registered');
+  
+  logger.info('[index] Registering data routes');
+  // Data routes
+  app.use('/api', dataRoutes);
+  
+  routesRegistered = true;
+};
 
 logger.info('[index] Setting up global error handling middleware');
 // Error handling middleware
@@ -198,6 +205,10 @@ logger.info('[index] Starting Railway-optimized startup flow');
     try {
       await initDb();
       logger.info('[db] Tables created or verified successfully');
+      
+      // Register routes that depend on database tables
+      registerAllRoutes();
+      logger.info('[index] All routes registered after database initialization');
     } catch (err) {
       logger.error({ err }, '[db] Table initialization failed');
       process.exit(1);

@@ -37,7 +37,7 @@ router.get('/cities', async (req, res) => {
   console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Fetching all cities`);
   try {
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Executing SQL query for cities`);
-    const cities = await query('SELECT * FROM "City"');
+    const cities = await query('SELECT * FROM cities');
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Successfully fetched ${cities.length} cities`);
     
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Sending 200 response with cities data`);
@@ -65,28 +65,45 @@ router.get('/spots', async (req, res) => {
   try {
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Executing SQL query for spots with city join`);
     const spots = await query(`
-      SELECT s.*, c.*
-      FROM "Spot" s
-      LEFT JOIN "City" c ON s.city_id = c.city_id
+      SELECT 
+        s.id, s.name, s.description, s.latitude, s.longitude, s.city_id, s.created_at, s.updated_at,
+        c.id as c_id, c.name as c_name, c.country as c_country, c.latitude as c_latitude, c.longitude as c_longitude, c.created_at as c_created_at, c.updated_at as c_updated_at
+      FROM spots s
+      LEFT JOIN cities c ON s.city_id = c.id
     `);
     
-    // Transform the result to mimic Prisma's include format
+    // Transform the result to include city information in a nested object
     const formattedSpots = spots.map(spot => {
-      const { city_id, city_name, country, ...cityRest } = spot;
-      return {
-        ...spot,
-        city: {
-          city_id,
-          name: city_name,
-          country,
-          ...cityRest
+      // Extract city properties (all fields that start with 'c_')
+      const cityProps: Record<string, any> = {};
+      const spotProps: Record<string, any> = {};
+      
+      // Separate city and spot properties
+      Object.entries(spot).forEach(([key, value]) => {
+        if (key === 'name' && 'c_name' in spot) {
+          // This is the spot name
+          spotProps[key] = value;
+        } else if (key === 'id' && 'c_id' in spot) {
+          // This is the spot id
+          spotProps[key] = value;
+        } else if (key.startsWith('c_')) {
+          // This is a city property with 'c_' prefix
+          cityProps[key.substring(2)] = value; // Remove 'c_' prefix
+        } else {
+          // This is a spot property
+          spotProps[key] = value;
         }
+      });
+      
+      return {
+        ...spotProps,
+        city: cityProps
       };
     });
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Successfully fetched ${spots.length} spots`);
     
-    console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Sending 200 response with spots data`);
-    res.json(spots);
+    console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Sending 200 response with formatted spots data`);
+    res.json(formattedSpots);
   } catch (error: any) {
     console.error(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - ERROR fetching spots: ${error}`);
     
