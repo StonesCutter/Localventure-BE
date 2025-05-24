@@ -37,7 +37,7 @@ router.post('/register', ((req, res) => __awaiter(void 0, void 0, void 0, functi
     try {
         const { email, password, username, role_id = 2 } = req.body;
         // Check if user already exists
-        const existingUsers = yield (0, db_1.query)('SELECT * FROM users WHERE email = $1 LIMIT 1', [email]);
+        const existingUsers = yield (0, db_1.query)('SELECT * FROM user WHERE email = $1 LIMIT 1', [email]);
         if (existingUsers.length > 0) {
             return res.status(400).json({ message: 'User already exists' });
         }
@@ -45,7 +45,7 @@ router.post('/register', ((req, res) => __awaiter(void 0, void 0, void 0, functi
         const salt = yield bcryptjs_1.default.genSalt(10);
         const hashedPassword = yield bcryptjs_1.default.hash(password, salt);
         // Create user
-        const users = yield (0, db_1.query)('INSERT INTO users (email, username, password_hash, role_id, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING user_id, email, username, role_id', [email, username, hashedPassword, role_id, true]);
+        const users = yield (0, db_1.query)('INSERT INTO user (email, username, password_hash, role_id, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING user_id, email, username, role_id', [email, username, hashedPassword, role_id, true]);
         const user = users[0];
         res.status(201).json(user);
     }
@@ -59,7 +59,7 @@ router.post('/login', ((req, res) => __awaiter(void 0, void 0, void 0, function*
     try {
         const { email, password } = req.body;
         // Find user
-        const users = yield (0, db_1.query)('SELECT * FROM users WHERE email = $1 OR username = $1 LIMIT 1', [email]);
+        const users = yield (0, db_1.query)('SELECT * FROM user WHERE email = $1 OR username = $1 LIMIT 1', [email]);
         const user = users[0];
         if (!user) {
             return res.status(401).json({ message: 'Invalid credentials' });

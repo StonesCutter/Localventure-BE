@@ -46,7 +46,7 @@ router.post('/register', ((req, res) => __awaiter(void 0, void 0, void 0, functi
         console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Registration attempt for email: ${email}, username: ${username}, role_id: ${role_id}`);
         // Check if user already exists
         console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Checking if user already exists...`);
-        const existingUsers = yield (0, db_1.query)('SELECT * FROM users WHERE email = $1 OR username = $2 LIMIT 1', [email, username]);
+        const existingUsers = yield (0, db_1.query)('SELECT * FROM user WHERE email = $1 OR username = $2 LIMIT 1', [email, username]);
         const existingUser = existingUsers[0];
         if (existingUser) {
             const duplicateField = existingUser.email === email ? 'email' : 'username';
@@ -64,7 +64,7 @@ router.post('/register', ((req, res) => __awaiter(void 0, void 0, void 0, functi
         console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Password hashed successfully`);
         // Create user
         console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Creating new user in database...`);
-        const users = yield (0, db_1.query)('INSERT INTO users (email, username, password_hash, role_id, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING *', [email, username, hashedPassword, role_id, true]);
+        const users = yield (0, db_1.query)('INSERT INTO user (email, username, password_hash, role_id, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING *', [email, username, hashedPassword, role_id, true]);
         const user = users[0];
         console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - User created successfully with ID: ${user.user_id}`);
         // Generate JWT

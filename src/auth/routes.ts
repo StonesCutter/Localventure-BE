@@ -50,7 +50,7 @@ router.post('/register', (async (req: Request, res: Response) => {
 
     // Check if user already exists
     console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Checking if user already exists...`);
-    const existingUsers = await query('SELECT * FROM users WHERE email = $1 OR username = $2 LIMIT 1', [email, username]);
+    const existingUsers = await query('SELECT * FROM user WHERE email = $1 OR username = $2 LIMIT 1', [email, username]);
     const existingUser = existingUsers[0];
     
     if (existingUser) {
@@ -72,7 +72,7 @@ router.post('/register', (async (req: Request, res: Response) => {
     // Create user
     console.log(`[${new Date().toISOString()}] [auth/routes.ts] ${req.method} ${req.originalUrl} - Creating new user in database...`);
     const users = await query<Express.User>(
-      'INSERT INTO users (email, username, password_hash, role_id, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      'INSERT INTO user (email, username, password_hash, role_id, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [email, username, hashedPassword, role_id, true]
     );
     const user = users[0];

@@ -28,7 +28,7 @@ exports.jwtStrategy = new passport_jwt_1.Strategy(jwtOptions, (req, payload, don
     console.log(`[${new Date().toISOString()}] [auth/strategy.ts] JWT token expiration: ${payload.exp ? new Date(payload.exp * 1000).toISOString() : 'not set'}`);
     try {
         console.log(`[${new Date().toISOString()}] [auth/strategy.ts] Attempting to find user with ID: ${payload.sub}`);
-        const users = yield (0, db_1.query)('SELECT user_id, email, username, role_id, password_hash, created_at, is_active FROM users WHERE user_id = $1', [parseInt(payload.sub)]);
+        const users = yield (0, db_1.query)('SELECT user_id, email, username, role_id, password_hash, created_at, is_active FROM user WHERE user_id = $1', [parseInt(payload.sub)]);
         const user = users[0];
         if (user) {
             console.log(`[${new Date().toISOString()}] [auth/strategy.ts] User found: ID ${user.user_id}, username: ${user.username}, role: ${user.role_id}`);

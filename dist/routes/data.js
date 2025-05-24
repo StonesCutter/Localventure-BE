@@ -30,7 +30,7 @@ router.get('/users', (req, res) => __awaiter(void 0, void 0, void 0, function* (
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Fetching all users`);
     try {
         console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Executing SQL query for users`);
-        const users = yield (0, db_1.query)('SELECT * FROM users');
+        const users = yield (0, db_1.query)('SELECT * FROM user');
         console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Successfully fetched ${users.length} users`);
         console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Sending 200 response with users data`);
         res.json(users);

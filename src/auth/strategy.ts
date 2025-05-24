@@ -43,7 +43,7 @@ export const jwtStrategy = new JwtStrategy(
     
     try {
       console.log(`[${new Date().toISOString()}] [auth/strategy.ts] Attempting to find user with ID: ${payload.sub}`);
-      const users = await query<Express.User>('SELECT user_id, email, username, role_id, password_hash, created_at, is_active FROM users WHERE user_id = $1', [parseInt(payload.sub)]);
+      const users = await query<Express.User>('SELECT user_id, email, username, role_id, password_hash, created_at, is_active FROM user WHERE user_id = $1', [parseInt(payload.sub)]);
       const user = users[0];
       
       if (user) {
