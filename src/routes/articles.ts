@@ -60,7 +60,7 @@ router.post(
       
       console.log(`[${new Date().toISOString()}] [articles.ts] ${req.method} ${req.originalUrl} - Executing SQL insert query`);
       const articles = await query<any>(`
-        INSERT INTO "Spot" (name, summary, city_id, category_id, slug, status)
+        INSERT INTO spot (name, summary, city_id, category_id, slug, status)
         VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
       `, [title, content, cityId, 1, slug, 'published']);
@@ -69,7 +69,7 @@ router.post(
       
       // Get city information to match the previous include behavior
       const cities = await query<any>(`
-        SELECT * FROM "City" WHERE city_id = $1
+        SELECT * FROM city WHERE city_id = $1
       `, [cityId]);
       
       // Attach city to article like Prisma would do with include

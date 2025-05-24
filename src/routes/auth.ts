@@ -14,7 +14,7 @@ router.post('/register', (async (req: Request, res: Response) => {
     const { email, password, username, role_id = 2 } = req.body;
 
     // Check if user already exists
-    const existingUsers = await query<any>('SELECT * FROM users WHERE email = $1 LIMIT 1', [email]);
+    const existingUsers = await query<any>('SELECT * FROM user WHERE email = $1 LIMIT 1', [email]);
     
     if (existingUsers.length > 0) {
       return res.status(400).json({ message: 'User already exists' });
@@ -26,7 +26,7 @@ router.post('/register', (async (req: Request, res: Response) => {
 
     // Create user
     const users = await query<any>(
-      'INSERT INTO users (email, username, password_hash, role_id, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING user_id, email, username, role_id', 
+      'INSERT INTO user (email, username, password_hash, role_id, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING user_id, email, username, role_id', 
       [email, username, hashedPassword, role_id, true]
     );
     const user = users[0];
@@ -44,7 +44,7 @@ router.post('/login', (async (req: Request, res: Response) => {
     const { email, password } = req.body;
 
     // Find user
-    const users = await query<any>('SELECT * FROM users WHERE email = $1 OR username = $1 LIMIT 1', [email]);
+    const users = await query<any>('SELECT * FROM user WHERE email = $1 OR username = $1 LIMIT 1', [email]);
     const user = users[0];
 
     if (!user) {

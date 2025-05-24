@@ -10,7 +10,7 @@ router.get('/users', async (req, res) => {
   console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Fetching all users`);
   try {
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Executing SQL query for users`);
-    const users = await query('SELECT * FROM users');
+    const users = await query('SELECT * FROM user');
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Successfully fetched ${users.length} users`);
     
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Sending 200 response with users data`);
@@ -37,7 +37,7 @@ router.get('/cities', async (req, res) => {
   console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Fetching all cities`);
   try {
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Executing SQL query for cities`);
-    const cities = await query('SELECT * FROM cities');
+    const cities = await query('SELECT * FROM city');
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Successfully fetched ${cities.length} cities`);
     
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Sending 200 response with cities data`);
@@ -68,8 +68,8 @@ router.get('/spots', async (req, res) => {
       SELECT 
         s.id, s.name, s.description, s.latitude, s.longitude, s.city_id, s.created_at, s.updated_at,
         c.id as c_id, c.name as c_name, c.country as c_country, c.latitude as c_latitude, c.longitude as c_longitude, c.created_at as c_created_at, c.updated_at as c_updated_at
-      FROM spots s
-      LEFT JOIN cities c ON s.city_id = c.id
+      FROM spot s
+      LEFT JOIN city c ON s.city_id = c.id
     `);
     
     // Transform the result to include city information in a nested object
