@@ -12,6 +12,7 @@ import { articleRoutes } from './routes/articles';
 import { dataRoutes } from './routes/data';
 import { healthRoutes } from './routes/health';
 import { pool } from './db';
+import { initDb } from './db/init';
 
 logger.info('[index] Starting application');
 
@@ -191,6 +192,16 @@ logger.info('[index] Starting Railway-optimized startup flow');
     const res = await pool.query('SELECT 1');
     logger.info('[db] Connection established');
     logger.info('[db] Test query successful:', res.rows);
+    
+    // Initialize database tables
+    logger.info('[db] Running table initialization');
+    try {
+      await initDb();
+      logger.info('[db] Tables created or verified successfully');
+    } catch (err) {
+      logger.error({ err }, '[db] Table initialization failed');
+      process.exit(1);
+    }
     
     /*************  KEEP-ALIVE (Neon free tier)  *************/
     const KEEPALIVE_MS = 4 * 60_000;          // 4 minutes
