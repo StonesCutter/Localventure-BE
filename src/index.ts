@@ -122,8 +122,12 @@ logger.info('[index] Deferring registration of routes that depend on DB tables u
 let routesRegistered = false;
 
 const registerAllRoutes = () => {
-  if (routesRegistered) return;
-  
+  logger.info('[index] registerAllRoutes() called.');
+  if (routesRegistered) {
+    logger.info('[index] Routes already registered, skipping in registerAllRoutes().');
+    return;
+  }
+  logger.info('[index] Proceeding to register routes in registerAllRoutes()...');
   // Article routes
   app.use('/articles', articleRoutes);
   logger.info('[index] Article routes registered');
@@ -192,25 +196,26 @@ logger.info('[index] Starting Railway-optimized startup flow');
   });
   logger.info('[index] Graceful shutdown handlers configured');
 
-  logger.info('[index] Attempting database connection AFTER server startup');
+  logger.info('[index] Attempting database connection AFTER server startup...');
   // Try to connect to the database AFTER server is already accepting requests
   try {
-    logger.info('[db] Testing pg connection');
+    logger.info('[db] STEP 1: Testing pg connection with SELECT 1...');
     const res = await pool.query('SELECT 1');
-    logger.info('[db] Connection established');
-    logger.info('[db] Test query successful:', res.rows);
+    logger.info('[db] STEP 1: Database connection test successful.', { rows: res.rows });
     
     // Initialize database tables
-    logger.info('[db] Running table initialization');
+    logger.info('[db] STEP 2: Attempting to initialize database tables by calling initDb()...');
     try {
-      await initDb();
-      logger.info('[db] Tables created or verified successfully');
+      await initDb(); // initDb now has its own detailed logging and re-throws errors
+      logger.info('[db] STEP 2: initDb() completed successfully. Tables should be created/verified.');
       
       // Register routes that depend on database tables
+      logger.info('[index] STEP 3: Attempting to register API routes by calling registerAllRoutes()...');
       registerAllRoutes();
-      logger.info('[index] All routes registered after database initialization');
+      logger.info('[index] STEP 3: registerAllRoutes() completed. API routes should be active.');
     } catch (err) {
-      logger.error({ err }, '[db] Table initialization failed');
+      // This catch block will now also catch errors re-thrown from initDb
+      logger.error({ err }, '[index] CRITICAL FAILURE during initDb() or subsequent route registration.');
       process.exit(1);
     }
     
