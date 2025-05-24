@@ -6,6 +6,7 @@ import { logger } from "../utils/logger"; // Assuming logger is available here
  * Run once on server start-up.
  */
 export async function initDb() {
+  console.log('[CONSOLE_LOG][initDb] Entered initDb function.'); // RAW CONSOLE LOG
   logger.info('[initDb] Starting database initialization process...');
 
   try {
@@ -55,6 +56,7 @@ export async function initDb() {
     logger.info('[initDb] All tables initialized successfully.');
 
   } catch (error) {
+    console.error('[CONSOLE_LOG][initDb] CRITICAL ERROR during table creation:', error); // RAW CONSOLE LOG
     logger.error({ err: error }, '[initDb] CRITICAL ERROR during table creation.');
     throw error; // Re-throw to be caught by the caller in index.ts
   }

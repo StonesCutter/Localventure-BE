@@ -199,22 +199,26 @@ logger.info('[index] Starting Railway-optimized startup flow');
   logger.info('[index] Attempting database connection AFTER server startup...');
   // Try to connect to the database AFTER server is already accepting requests
   try {
+    console.log('[CONSOLE_LOG][index.ts] Attempting STEP 1: DB connection test...'); // RAW CONSOLE LOG
     logger.info('[db] STEP 1: Testing pg connection with SELECT 1...');
     const res = await pool.query('SELECT 1');
     logger.info('[db] STEP 1: Database connection test successful.', { rows: res.rows });
     
     // Initialize database tables
+    console.log('[CONSOLE_LOG][index.ts] Attempting STEP 2: Calling initDb()...'); // RAW CONSOLE LOG
     logger.info('[db] STEP 2: Attempting to initialize database tables by calling initDb()...');
     try {
       await initDb(); // initDb now has its own detailed logging and re-throws errors
       logger.info('[db] STEP 2: initDb() completed successfully. Tables should be created/verified.');
       
       // Register routes that depend on database tables
+      console.log('[CONSOLE_LOG][index.ts] Attempting STEP 3: Calling registerAllRoutes()...'); // RAW CONSOLE LOG
       logger.info('[index] STEP 3: Attempting to register API routes by calling registerAllRoutes()...');
       registerAllRoutes();
       logger.info('[index] STEP 3: registerAllRoutes() completed. API routes should be active.');
     } catch (err) {
       // This catch block will now also catch errors re-thrown from initDb
+      console.error('[CONSOLE_LOG][index.ts] CRITICAL FAILURE during initDb() or route registration:', err); // RAW CONSOLE LOG
       logger.error({ err }, '[index] CRITICAL FAILURE during initDb() or subsequent route registration.');
       process.exit(1);
     }
