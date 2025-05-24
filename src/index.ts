@@ -12,7 +12,7 @@ import { articleRoutes } from './routes/articles';
 import { dataRoutes } from './routes/data';
 import { healthRoutes } from './routes/health';
 import { pool } from './db';
-import { initDb } from './db/init';
+import { bootstrap } from './db/bootstrap';
 
 logger.info('[index] Starting application');
 
@@ -121,23 +121,14 @@ logger.info('[index] Auth routes registered');
 logger.info('[index] Deferring registration of routes that depend on DB tables until after initialization');
 let routesRegistered = false;
 
-const registerAllRoutes = () => {
-  logger.info('[index] registerAllRoutes() called.');
-  if (routesRegistered) {
-    logger.info('[index] Routes already registered, skipping in registerAllRoutes().');
-    return;
-  }
-  logger.info('[index] Proceeding to register routes in registerAllRoutes()...');
-  // Article routes
-  app.use('/articles', articleRoutes);
-  logger.info('[index] Article routes registered');
-  
-  logger.info('[index] Registering data routes');
-  // Data routes
-  app.use('/api', dataRoutes);
-  
-  routesRegistered = true;
-};
+// Register routes directly
+logger.info('[index] Registering article routes');
+app.use('/articles', articleRoutes);
+logger.info('[index] Article routes registered');
+
+logger.info('[index] Registering data routes');
+app.use('/api', dataRoutes);
+logger.info('[index] Data routes registered');
 
 logger.info('[index] Setting up global error handling middleware');
 // Error handling middleware
@@ -204,22 +195,13 @@ logger.info('[index] Starting Railway-optimized startup flow');
     const res = await pool.query('SELECT 1');
     logger.info('[db] STEP 1: Database connection test successful.', { rows: res.rows });
     
-    // Initialize database tables
-    console.log('[CONSOLE_LOG][index.ts] Attempting STEP 2: Calling initDb()...'); // RAW CONSOLE LOG
-    logger.info('[db] STEP 2: Attempting to initialize database tables by calling initDb()...');
+    // Bootstrap database tables
+    logger.info('[db] Ensuring database tables exist...');
     try {
-      await initDb(); // initDb now has its own detailed logging and re-throws errors
-      logger.info('[db] STEP 2: initDb() completed successfully. Tables should be created/verified.');
-      
-      // Register routes that depend on database tables
-      console.log('[CONSOLE_LOG][index.ts] Attempting STEP 3: Calling registerAllRoutes()...'); // RAW CONSOLE LOG
-      logger.info('[index] STEP 3: Attempting to register API routes by calling registerAllRoutes()...');
-      registerAllRoutes();
-      logger.info('[index] STEP 3: registerAllRoutes() completed. API routes should be active.');
+      await bootstrap();
+      logger.info('[db] Database tables created or verified successfully');
     } catch (err) {
-      // This catch block will now also catch errors re-thrown from initDb
-      console.error('[CONSOLE_LOG][index.ts] CRITICAL FAILURE during initDb() or route registration:', err); // RAW CONSOLE LOG
-      logger.error({ err }, '[index] CRITICAL FAILURE during initDb() or subsequent route registration.');
+      logger.error({ err }, '[db] Failed to create database tables');
       process.exit(1);
     }
     
