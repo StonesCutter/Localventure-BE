@@ -25,7 +25,7 @@ const validateArticle = [
     .withMessage('Content cannot be empty'),
   body('cityId')
     .isInt()
-    .withMessage('City ID must be a valid integer'),
+    .withMessage('city ID must be a valid integer'),
   (req: Request, res: Response, next: NextFunction) => {
     console.log(`[${new Date().toISOString()}] [articles.ts] ${req.method} ${req.originalUrl} - Validating article request body`);
     const errors = validationResult(req);
@@ -125,7 +125,7 @@ router.get(
         const query = `
           SELECT s.*, c.* 
           FROM "Spot" s
-          LEFT JOIN "City" c ON s.city_id = c.city_id
+          LEFT JOIN "city" c ON s.city_id = c.city_id
           WHERE s.city_id = $1 AND s.status = 'published'
           ORDER BY s.spot_id DESC
         `;
@@ -134,7 +134,7 @@ router.get(
         const query = `
           SELECT s.*, c.* 
           FROM "Spot" s
-          LEFT JOIN "City" c ON s.city_id = c.city_id
+          LEFT JOIN "city" c ON s.city_id = c.city_id
           WHERE s.status = 'published'
           ORDER BY s.spot_id DESC
         `;

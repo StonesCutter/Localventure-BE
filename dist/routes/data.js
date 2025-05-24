@@ -53,7 +53,7 @@ router.get('/cities', (req, res) => __awaiter(void 0, void 0, void 0, function* 
     console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Fetching all cities`);
     try {
         console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Executing SQL query for cities`);
-        const cities = yield (0, db_1.query)('SELECT * FROM "City"');
+        const cities = yield (0, db_1.query)('SELECT * FROM "city"');
         console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Successfully fetched ${cities.length} cities`);
         console.log(`[${new Date().toISOString()}] [data.ts] ${req.method} ${req.originalUrl} - Sending 200 response with cities data`);
         res.json(cities);
@@ -79,7 +79,7 @@ router.get('/spots', (req, res) => __awaiter(void 0, void 0, void 0, function* (
         const spots = yield (0, db_1.query)(`
       SELECT s.*, c.*
       FROM "Spot" s
-      LEFT JOIN "City" c ON s.city_id = c.city_id
+      LEFT JOIN "city" c ON s.city_id = c.city_id
     `);
         // Transform the result to mimic Prisma's include format
         const formattedSpots = spots.map(spot => {

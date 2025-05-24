@@ -37,7 +37,7 @@ const validateArticle = [
         .withMessage('Content cannot be empty'),
     (0, express_validator_1.body)('cityId')
         .isInt()
-        .withMessage('City ID must be a valid integer'),
+        .withMessage('city ID must be a valid integer'),
     (req, res, next) => {
         console.log(`[${new Date().toISOString()}] [articles.ts] ${req.method} ${req.originalUrl} - Validating article request body`);
         const errors = (0, express_validator_1.validationResult)(req);
@@ -72,7 +72,7 @@ router.post('/', passport_1.default.authenticate('jwt', { session: false }), val
         const article = articles[0];
         // Get city information to match the previous include behavior
         const cities = yield (0, db_1.query)(`
-        SELECT * FROM "City" WHERE city_id = $1
+        SELECT * FROM "city" WHERE city_id = $1
       `, [cityId]);
         // Attach city to article like Prisma would do with include
         if (cities.length > 0) {
@@ -116,7 +116,7 @@ router.get('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             const query = `
           SELECT s.*, c.* 
           FROM "Spot" s
-          LEFT JOIN "City" c ON s.city_id = c.city_id
+          LEFT JOIN "city" c ON s.city_id = c.city_id
           WHERE s.city_id = $1 AND s.status = 'published'
           ORDER BY s.spot_id DESC
         `;
@@ -126,7 +126,7 @@ router.get('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             const query = `
           SELECT s.*, c.* 
           FROM "Spot" s
-          LEFT JOIN "City" c ON s.city_id = c.city_id
+          LEFT JOIN "city" c ON s.city_id = c.city_id
           WHERE s.status = 'published'
           ORDER BY s.spot_id DESC
         `;
