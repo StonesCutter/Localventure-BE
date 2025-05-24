@@ -16,59 +16,70 @@ npm run build
 npm start
 ```
 
+## Deployment
+
+### Render Deploy
+1. Add **DATABASE_URL** in *Environment > Secret Files* or *Environment > Variables*  
+   (copy it from the Neon dashboard – includes `sslmode=require`).
+2. Redeploy. Health and all `/api/*` routes should return 200.
+
+### Database Setup
+The application uses Neon PostgreSQL in production. For local development:
+1. Set up a Neon project at https://neon.tech
+2. Copy the connection string from Neon dashboard
+3. Add it to your `.env` file as `DATABASE_URL`
+4. If no `DATABASE_URL` is provided, the app will fall back to local PostgreSQL using individual `PG*` variables
+
 ## API Endpoints
 
 ### Health Check
-```bash
-curl https://<project>.railway.app/healthz
-```
+- `GET /healthz` - Simple health check endpoint that returns 200 OK
+- `GET /` - Root endpoint that returns "Localventure API is running"
+
+### Authentication
+- `POST /auth/register` - Register a new user
+  - Required fields: email, password, username
+  - Optional: role_id (defaults to 2)
+- `POST /auth/login` - Login with existing credentials
+  - Required fields: email (or username), password
 
 ### Data API
-```bash
-# Get all users
-curl https://<project>.railway.app/api/users
+- `GET /api/users` - Get all users
+- `GET /api/cities` - Get all cities
+- `GET /api/spots` - Get all spots
 
-# Get all cities
-curl https://<project>.railway.app/api/cities
+### Authentication Examples
 
-# Get all spots
-curl https://<project>.railway.app/api/spots
-```
-
-### Authentication Examples (PowerShell)
-
+#### PowerShell
 ```powershell
-# Register
+# Register a new user
 $body = @{
-    email = "newuser@example.com"
+    email = "user@example.com"
     password = "password123"
-    username = "New User"
+    username = "username"
+    role_id = 2  # Optional, defaults to 2
 } | ConvertTo-Json
-Invoke-RestMethod -Uri "http://localhost:8080/auth/register" -Method Post -Body $body -ContentType "application/json"
+Invoke-RestMethod -Uri "https://<your-render-project>.onrender.com/auth/register" -Method Post -Body $body -ContentType "application/json"
 
 # Login
 $loginBody = @{
-    email = "newuser@example.com"
+    email = "user@example.com"
     password = "password123"
 } | ConvertTo-Json
-$response = Invoke-RestMethod -Uri "http://localhost:8080/auth/login" -Method Post -Body $loginBody -ContentType "application/json"
+$response = Invoke-RestMethod -Uri "https://<your-render-project>.onrender.com/auth/login" -Method Post -Body $loginBody -ContentType "application/json"
 $token = $response.token
-
-# Access protected routes
-$headers = @{ Authorization = "Bearer $token" }
-Invoke-RestMethod -Uri "http://localhost:8080/auth/profile" -Headers $headers -Method Get
 ```
 
-### Authentication Examples (cURL)
-
+#### cURL
 ```bash
 # Register a new user
-curl -X POST https://<project>.railway.app/auth/register \
+curl -X POST https://<your-render-project>.onrender.com/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"password123","username":"username"}'  
+  -d '{"email":"user@example.com","password":"password123","username":"username","role_id":2}'
 
 # Login
-curl -X POST https://<project>.railway.app/auth/login \
+curl -X POST https://<your-render-project>.onrender.com/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com","password":"password123"}'
+```
 ```
